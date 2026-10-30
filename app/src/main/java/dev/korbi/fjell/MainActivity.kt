@@ -45,6 +45,9 @@ class MainActivity : ComponentActivity() {
     private val iconVersion = mutableIntStateOf(0)
     private var pendingIconApp: AppEntry? = null
 
+    /** Lens refuses to open unless started for a result, which is how it learns who called it. */
+    private val lens = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {}
+
     private val pickPicture = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val app = pendingIconApp ?: return@registerForActivityResult
         pendingIconApp = null
@@ -251,11 +254,10 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun openLens() {
-            // google://lens opens Lens' camera screen; googleapp://lens only forwards and closes without extras.
             val lensScreen = Intent(Intent.ACTION_VIEW, Uri.parse("google://lens")).setPackage(GOOGLE_APP)
-            val deeplink = Intent(Intent.ACTION_VIEW, Uri.parse("googleapp://lens")).setPackage(GOOGLE_APP)
             val standalone = packageManager.getLaunchIntentForPackage("com.google.ar.lens")
-            if (!startSafely(lensScreen) && !startSafely(deeplink) && (standalone == null || !startSafely(standalone))) {
+            val opened = runCatching { lens.launch(lensScreen) }.isSuccess || (standalone != null && startSafely(standalone))
+            if (!opened) {
                 Toast.makeText(this@MainActivity, "Google Lens ist nicht installiert", Toast.LENGTH_SHORT).show()
             }
         }
