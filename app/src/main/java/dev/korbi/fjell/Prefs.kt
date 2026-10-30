@@ -15,6 +15,11 @@ class Prefs(context: Context) {
 
     val hasChosenGrid: Boolean get() = sp.contains("grid")
 
+    /** Keys of apps left out of the stack listing (search still finds them). */
+    var hidden: Set<String>
+        get() = sp.getStringSet("hidden", null)?.toSet() ?: emptySet()
+        set(value) = sp.edit().putStringSet("hidden", value).apply()
+
     /** App keys, most recently launched first. */
     var recent: List<String>
         get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()

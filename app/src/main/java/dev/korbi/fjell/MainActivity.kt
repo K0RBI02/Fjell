@@ -35,6 +35,7 @@ class MainActivity : ComponentActivity() {
     private val apps = mutableStateOf<List<AppEntry>>(emptyList())
     private val grid = mutableStateOf<List<String?>>(List(GRID_SIZE) { null })
     private val recent = mutableStateOf<List<String>>(emptyList())
+    private val hidden = mutableStateOf<Set<String>>(emptySet())
     private val temperature = mutableStateOf<Int?>(null)
     private var weatherFetchedAt = 0L
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
@@ -75,6 +76,7 @@ class MainActivity : ComponentActivity() {
         searchOptions.value = SearchBarOptions(mic = prefs.searchMic)
         grid.value = prefs.grid
         recent.value = prefs.recent
+        hidden.value = prefs.hidden
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
         temperature.value = prefs.lastTemperature
@@ -95,6 +97,7 @@ class MainActivity : ComponentActivity() {
                 apps = apps.value,
                 gridKeys = grid.value,
                 recentKeys = recent.value,
+                hiddenKeys = hidden.value,
                 temperature = temperature.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
@@ -303,6 +306,13 @@ class MainActivity : ComponentActivity() {
 
         override fun setAppIconStyle(app: AppEntry, style: IconStyle?) = setIconOverride(app, style)
 
+        override fun setHidden(app: AppEntry, hide: Boolean) {
+            hidden.value = if (hide) hidden.value + app.key else hidden.value - app.key
+            prefs.hidden = hidden.value
+        }
+
+        override fun isHidden(app: AppEntry) = app.key in hidden.value
+
         override fun rename(app: AppEntry, label: String) {
             prefs.setLabel(app.key, label.trim().ifEmpty { null })
             reload()
@@ -371,6 +381,9 @@ interface LauncherActions {
     /** null resets the app to the global style. */
     fun setAppIconStyle(app: AppEntry, style: IconStyle?)
     fun pickCustomIcon(app: AppEntry)
+
+    fun setHidden(app: AppEntry, hide: Boolean)
+    fun isHidden(app: AppEntry): Boolean
 
     /** A blank [label] restores the app's own name. */
     fun rename(app: AppEntry, label: String)

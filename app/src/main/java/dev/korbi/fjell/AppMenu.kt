@@ -128,6 +128,12 @@ fun AppMenuPopup(
         MenuDivider()
         MenuRow(if (inGrid) "In den Stapel" else "Auf den Startbildschirm", glyph = DrawScope::drawGridGlyph) { dismissThen { actions.toggleGrid(app) } }
         MenuRow("Icon ändern", glyph = DrawScope::drawIconGlyph) { dismissThen(onOpenIconPicker) }
+        if (!inGrid) {
+            val hidden = actions.isHidden(app)
+            MenuRow(if (hidden) "Wieder im Stapel zeigen" else "Im Stapel ausblenden", glyph = DrawScope::drawHideGlyph) {
+                dismissThen { actions.setHidden(app, !hidden) }
+            }
+        }
         MenuRow("App-Info", glyph = DrawScope::drawInfoGlyph) { dismissThen { actions.appInfo(app) } }
         MenuRow("Deinstallieren", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.uninstall(app) } }
     }
@@ -257,6 +263,17 @@ fun DrawScope.drawMicGlyph(color: Color) {
     drawRoundRect(color, Offset(w * 0.36f, h * 0.06f), Size(w * 0.28f, h * 0.5f), CornerRadius(w * 0.14f))
     drawArc(color, 0f, 180f, false, Offset(w * 0.2f, h * 0.2f), Size(w * 0.6f, h * 0.52f), style = Stroke(stroke, cap = StrokeCap.Round))
     drawLine(color, Offset(w * 0.5f, h * 0.72f), Offset(w * 0.5f, h * 0.92f), stroke, StrokeCap.Round)
+}
+
+private fun DrawScope.drawHideGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    val w = size.width
+    val h = size.height
+    // An eye, struck through.
+    drawArc(color, 200f, 140f, false, Offset(w * 0.05f, h * 0.22f), Size(w * 0.9f, h * 0.7f), style = Stroke(stroke, cap = StrokeCap.Round))
+    drawArc(color, 20f, 140f, false, Offset(w * 0.05f, h * 0.08f), Size(w * 0.9f, h * 0.7f), style = Stroke(stroke, cap = StrokeCap.Round))
+    drawCircle(color, w * 0.13f, center)
+    drawLine(color, Offset(w * 0.12f, h * 0.88f), Offset(w * 0.88f, h * 0.12f), stroke, StrokeCap.Round)
 }
 
 private fun DrawScope.drawNarrowGlyph(color: Color) {

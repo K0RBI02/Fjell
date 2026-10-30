@@ -148,6 +148,7 @@ fun Launcher(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     recentKeys: List<String>,
+    hiddenKeys: Set<String>,
     temperature: Int?,
     iconVersion: Int,
     globalIconStyle: IconStyle,
@@ -205,6 +206,7 @@ fun Launcher(
                         apps = apps,
                         gridKeys = gridKeys,
                         recentKeys = recentKeys,
+                        hiddenKeys = hiddenKeys,
                         actions = actions,
                         onClose = { drawerOpen = false },
                     )
@@ -219,6 +221,7 @@ fun Launcher(
                     stapelOpensSettings = stapelOpensSettings,
                     searchShown = GridSlots.SEARCH_KEY in gridKeys,
                     searchOptions = searchOptions,
+                    hiddenApps = apps.filter { it.key in hiddenKeys },
                     actions = actions,
                     onDismiss = { settingsOpen = false },
                 )
@@ -601,19 +604,20 @@ private fun Drawer(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     recentKeys: List<String>,
+    hiddenKeys: Set<String>,
     actions: LauncherActions,
     onClose: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     // The stack holds everything not on the home grid; search covers all apps.
-    val filtered = remember(apps, gridKeys, query) {
+    val filtered = remember(apps, gridKeys, hiddenKeys, query) {
         val q = query.trim()
-        if (q.isEmpty()) apps.filter { it.key !in gridKeys } else apps.filter { it.label.contains(q, ignoreCase = true) }
+        if (q.isEmpty()) apps.filter { it.key !in gridKeys && it.key !in hiddenKeys } else apps.filter { it.label.contains(q, ignoreCase = true) }
     }
-    val recentApps = remember(apps, gridKeys, recentKeys, query) {
+    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query) {
         if (query.isNotBlank()) return@remember emptyList()
         val byKey = apps.associateBy { it.key }
-        recentKeys.filter { it !in gridKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
+        recentKeys.filter { it !in gridKeys && it !in hiddenKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
     }
     val focus = LocalFocusManager.current
     val close by rememberUpdatedState {
