@@ -251,9 +251,11 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun openLens() {
-            val viaGoogle = Intent(Intent.ACTION_VIEW, Uri.parse("googleapp://lens")).setPackage(GOOGLE_APP)
+            // google://lens opens Lens' camera screen; googleapp://lens only forwards and closes without extras.
+            val lensScreen = Intent(Intent.ACTION_VIEW, Uri.parse("google://lens")).setPackage(GOOGLE_APP)
+            val deeplink = Intent(Intent.ACTION_VIEW, Uri.parse("googleapp://lens")).setPackage(GOOGLE_APP)
             val standalone = packageManager.getLaunchIntentForPackage("com.google.ar.lens")
-            if (!startSafely(viaGoogle) && (standalone == null || !startSafely(standalone))) {
+            if (!startSafely(lensScreen) && !startSafely(deeplink) && (standalone == null || !startSafely(standalone))) {
                 Toast.makeText(this@MainActivity, "Google Lens ist nicht installiert", Toast.LENGTH_SHORT).show()
             }
         }
