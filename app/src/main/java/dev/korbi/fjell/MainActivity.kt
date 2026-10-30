@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
     private val iconPacks = mutableStateOf<List<IconSource>>(emptyList())
     private val stapelOpensSettings = mutableStateOf(false)
+    private val searchOptions = mutableStateOf(SearchBarOptions(mic = true, lens = false))
 
     /** Bumped whenever icons may look different, so the UI re-renders them. */
     private val iconVersion = mutableIntStateOf(0)
@@ -70,6 +71,7 @@ class MainActivity : ComponentActivity() {
         icons = IconProvider(this, prefs)
         globalIconStyle.value = icons.globalStyle
         stapelOpensSettings.value = prefs.stapelOpensSettings
+        searchOptions.value = SearchBarOptions(prefs.searchMic, prefs.searchLens)
         grid.value = prefs.grid
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
                 stapelOpensSettings = stapelOpensSettings.value,
+                searchOptions = searchOptions.value,
                 homePresses = homePresses.intValue,
                 actions = actions,
             )
@@ -237,6 +240,24 @@ class MainActivity : ComponentActivity() {
             if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
         }
 
+        override fun setSearchMic(shown: Boolean) {
+            prefs.searchMic = shown
+            searchOptions.value = searchOptions.value.copy(mic = shown)
+        }
+
+        override fun setSearchLens(shown: Boolean) {
+            prefs.searchLens = shown
+            searchOptions.value = searchOptions.value.copy(lens = shown)
+        }
+
+        override fun openLens() {
+            val viaGoogle = Intent(Intent.ACTION_VIEW, Uri.parse("googleapp://lens")).setPackage(GOOGLE_APP)
+            val standalone = packageManager.getLaunchIntentForPackage("com.google.ar.lens")
+            if (!startSafely(viaGoogle) && (standalone == null || !startSafely(standalone))) {
+                Toast.makeText(this@MainActivity, "Google Lens ist nicht installiert", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         override fun openVoiceSearch() {
             if (!startSafely(Intent(RecognizerIntent.ACTION_WEB_SEARCH))) startSafely(Intent(Intent.ACTION_VOICE_COMMAND))
         }
@@ -331,6 +352,9 @@ interface LauncherActions {
     fun setSearchWidth(span: Int)
     fun openWebSearch()
     fun openVoiceSearch()
+    fun openLens()
+    fun setSearchMic(shown: Boolean)
+    fun setSearchLens(shown: Boolean)
     fun setStapelOpensSettings(opensSettings: Boolean)
     fun openClock()
     fun openCalendar()

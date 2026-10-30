@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -150,6 +151,7 @@ fun Launcher(
     globalIconStyle: IconStyle,
     iconPacks: List<IconSource>,
     stapelOpensSettings: Boolean,
+    searchOptions: SearchBarOptions,
     homePresses: Int,
     actions: LauncherActions,
 ) {
@@ -188,6 +190,7 @@ fun Launcher(
                     onOpenDrawer = { drawerOpen = true },
                     onOpenSettings = { settingsOpen = true },
                     stapelOpensSettings = stapelOpensSettings,
+                    searchOptions = searchOptions,
                     modifier = Modifier.alpha(homeAlpha),
                 )
 
@@ -212,6 +215,7 @@ fun Launcher(
                     stapelShown = MainActivity.STAPEL_KEY in gridKeys,
                     stapelOpensSettings = stapelOpensSettings,
                     searchShown = GridSlots.SEARCH_KEY in gridKeys,
+                    searchOptions = searchOptions,
                     actions = actions,
                     onDismiss = { settingsOpen = false },
                 )
@@ -252,6 +256,7 @@ private fun Home(
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
     stapelOpensSettings: Boolean,
+    searchOptions: SearchBarOptions,
     modifier: Modifier = Modifier,
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
@@ -326,6 +331,7 @@ private fun Home(
                     slots = slots,
                     actions = actions,
                     stapelOpensSettings = stapelOpensSettings,
+                    searchOptions = searchOptions,
                     onOpenDrawer = { openDrawer() },
                     onOpenSettings = { openSettings() },
                 )
@@ -369,6 +375,7 @@ private fun AppGrid(
     slots: List<GridItem?>,
     actions: LauncherActions,
     stapelOpensSettings: Boolean,
+    searchOptions: SearchBarOptions,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -380,6 +387,7 @@ private fun AppGrid(
     val haptics = LocalHapticFeedback.current
     // The gesture handlers below outlive recompositions, so they must read these fresh.
     val opensSettings by rememberUpdatedState(stapelOpensSettings)
+    val searchButtons by rememberUpdatedState(searchOptions.trailing)
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
@@ -441,9 +449,15 @@ private fun AppGrid(
                                     Press.Tap -> when (item) {
                                         is GridItem.App -> actions.launch(item.entry)
                                         GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
-                                        // The mic sits in a square at the bar's right end.
-                                        is GridItem.Search ->
-                                            if (down.position.x > size.width - size.height) actions.openVoiceSearch() else actions.openWebSearch()
+                                        // Mic and Lens each own a square at the bar's right end.
+                                        is GridItem.Search -> {
+                                            val fromRight = ((size.width - down.position.x) / size.height).toInt()
+                                            when (searchButtons.getOrNull(fromRight)) {
+                                                SearchButton.Mic -> actions.openVoiceSearch()
+                                                SearchButton.Lens -> actions.openLens()
+                                                null -> actions.openWebSearch()
+                                            }
+                                        }
                                         GridItem.Covered -> Unit
                                     }
                                     Press.Cancel -> Unit
@@ -490,8 +504,8 @@ private fun AppGrid(
                             }
                         }
                         is GridItem.Search -> {
-                            SearchBar(Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
-                            if (menuSlot == i) SearchMenuPopup(span, actions, onDismiss = { menuSlot = null })
+                            SearchBar(searchOptions, span, Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
+                            if (menuSlot == i) SearchMenuPopup(span, searchOptions, actions, onDismiss = { menuSlot = null })
                         }
                         GridItem.Covered -> Unit
                     }
@@ -501,37 +515,58 @@ private fun AppGrid(
     }
 }
 
-/** The home search bar: a long bubble with a magnifier, a hand-written hint and a mic. */
+enum class SearchButton { Mic, Lens }
+
+data class SearchBarOptions(val mic: Boolean, val lens: Boolean) {
+    /** Buttons at the bar's right end, listed from the right edge inwards. */
+    val trailing: List<SearchButton> get() = listOfNotNull(SearchButton.Mic.takeIf { mic }, SearchButton.Lens.takeIf { lens })
+}
+
+/** The home search bar: a long bubble with a magnifier, a hand-written hint and optional mic and Lens. */
 @Composable
-private fun SearchBar(modifier: Modifier) {
+private fun SearchBar(options: SearchBarOptions, span: Int, modifier: Modifier) {
     val dark = isSystemInDarkTheme()
     val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
     val glyph = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
+    val buttons = options.trailing
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .background(bubble, RoundedCornerShape(36))
-            .padding(horizontal = 14.dp)
             .semantics { contentDescription = "Suche" },
     ) {
+        Spacer(Modifier.width(14.dp))
         SearchGlyph(glyph)
         Spacer(Modifier.width(10.dp))
-        Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
-        MicGlyph(glyph)
+        // On a 2-wide bar with both buttons there's no room left for the hint.
+        Box(Modifier.weight(1f)) {
+            if (span > 2 || buttons.size < 2) {
+                Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)))
+            }
+        }
+        // Each button sits in a square as tall as the bar; the tap handler relies on that.
+        buttons.asReversed().forEach { button ->
+            Box(Modifier.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                when (button) {
+                    SearchButton.Mic -> MicGlyph(glyph)
+                    SearchButton.Lens -> LensGlyph(glyph)
+                }
+            }
+        }
+        if (buttons.isEmpty()) Spacer(Modifier.width(14.dp))
     }
+}
+
+/** Google Lens: four corner brackets around a dot. */
+@Composable
+fun LensGlyph(color: Color) {
+    Canvas(Modifier.size(20.dp)) { drawLensGlyph(color) }
 }
 
 /** A small microphone. */
 @Composable
 fun MicGlyph(color: Color) {
-    Canvas(Modifier.size(20.dp)) {
-        val stroke = size.minDimension * 0.1f
-        val w = size.width
-        val h = size.height
-        drawRoundRect(color, Offset(w * 0.36f, h * 0.06f), Size(w * 0.28f, h * 0.5f), CornerRadius(w * 0.14f))
-        drawArc(color, 0f, 180f, false, Offset(w * 0.2f, h * 0.2f), Size(w * 0.6f, h * 0.52f), style = Stroke(stroke, cap = StrokeCap.Round))
-        drawLine(color, Offset(w * 0.5f, h * 0.72f), Offset(w * 0.5f, h * 0.92f), stroke, StrokeCap.Round)
-    }
+    Canvas(Modifier.size(20.dp)) { drawMicGlyph(color) }
 }
 
 /** A bubble like the app icons, with a 3x3 grid of dots. */
