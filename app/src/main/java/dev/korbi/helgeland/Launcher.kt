@@ -147,6 +147,7 @@ private val LocalOpenIconPicker = staticCompositionLocalOf<(AppEntry) -> Unit> {
 fun Launcher(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
+    recentKeys: List<String>,
     temperature: Int?,
     iconVersion: Int,
     globalIconStyle: IconStyle,
@@ -203,6 +204,7 @@ fun Launcher(
                     Drawer(
                         apps = apps,
                         gridKeys = gridKeys,
+                        recentKeys = recentKeys,
                         actions = actions,
                         onClose = { drawerOpen = false },
                     )
@@ -598,6 +600,7 @@ private fun Clock(color: Color, temperature: Int?, actions: LauncherActions, mod
 private fun Drawer(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
+    recentKeys: List<String>,
     actions: LauncherActions,
     onClose: () -> Unit,
 ) {
@@ -606,6 +609,11 @@ private fun Drawer(
     val filtered = remember(apps, gridKeys, query) {
         val q = query.trim()
         if (q.isEmpty()) apps.filter { it.key !in gridKeys } else apps.filter { it.label.contains(q, ignoreCase = true) }
+    }
+    val recentApps = remember(apps, gridKeys, recentKeys, query) {
+        if (query.isNotBlank()) return@remember emptyList()
+        val byKey = apps.associateBy { it.key }
+        recentKeys.filter { it !in gridKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
     }
     val focus = LocalFocusManager.current
     val close by rememberUpdatedState {
@@ -644,8 +652,9 @@ private fun Drawer(
     val sections = remember(filtered, query) {
         if (query.isBlank()) filtered.groupBy { sectionLetter(it.label) } else null
     }
-    val headerIndex = remember(sections) {
-        var index = 0
+    val headerIndex = remember(sections, recentApps.isEmpty()) {
+        // The "zuletzt" header and row sit above the first letter.
+        var index = if (recentApps.isEmpty()) 0 else 2
         sections.orEmpty().mapValues { (_, group) -> index.also { index += group.size + 1 } }
     }
     val listState = rememberLazyListState()
@@ -735,6 +744,10 @@ private fun Drawer(
                         }
                     }
                 } else {
+                    if (recentApps.isNotEmpty()) {
+                        item(key = "recent:header") { SectionHeader("zuletzt") }
+                        item(key = "recent:row") { RecentRow(recentApps, actions, onLaunch = launchAndClose) }
+                    }
                     sections.forEach { (letter, group) ->
                         item(key = "section:$letter") { SectionHeader(letter) }
                         items(group, key = { it.key }) { appRow(it) }
@@ -753,6 +766,29 @@ private fun Drawer(
                 )
             }
         }
+    }
+}
+
+private const val RECENT_SHOWN = 4
+
+/** The last few apps started from the launcher, as a row of bubbles at the top of the stack. */
+@Composable
+private fun RecentRow(apps: List<AppEntry>, actions: LauncherActions, onLaunch: (AppEntry) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 40.dp, top = 6.dp, bottom = 4.dp)) {
+        apps.forEach { app ->
+            AppWithMenu(
+                app = app,
+                inGrid = false,
+                actions = actions,
+                onLaunch = { onLaunch(app) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+                    AppIcon(app, 50.dp, actions)
+                }
+            }
+        }
+        repeat(RECENT_SHOWN - apps.size) { Spacer(Modifier.weight(1f)) }
     }
 }
 
