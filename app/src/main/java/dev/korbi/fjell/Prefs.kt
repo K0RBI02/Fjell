@@ -24,10 +24,6 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("searchMic", true)
         set(value) = sp.edit().putBoolean("searchMic", value).apply()
 
-    var searchLens: Boolean
-        get() = sp.getBoolean("searchLens", false)
-        set(value) = sp.edit().putBoolean("searchLens", value).apply()
-
     var stapelButtonPlaced: Boolean
         get() = sp.getBoolean("stapelButtonPlaced", false)
         set(value) = sp.edit().putBoolean("stapelButtonPlaced", value).apply()
