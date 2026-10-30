@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fjell</string>
+
+    <style name="Theme.Fjell" parent="android:Theme.Material.NoActionBar">
+        <!-- Matches the mountain wallpaper's sky so cold start doesn't flash black. -->
+        <item name="android:windowBackground">@color/sky</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+
+    <color name="sky">#FFA3ADBE</color>
+    <color name="ic_bg">#FF1C2233</color>
+</resources>

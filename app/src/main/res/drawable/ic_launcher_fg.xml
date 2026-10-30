@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Fjord scene in miniature: sun, two ridges and the water line. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#F1E4CC" android:pathData="M70,40 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0" />
+    <path android:fillColor="#8496B0" android:pathData="M26,66 L26,56 L36,48 L44,54 L56,42 L70,52 L82,46 L82,66 Z" />
+    <path android:fillColor="#2A3347" android:pathData="M26,66 L26,60 L38,53 L48,60 L60,55 L72,60 L82,57 L82,66 Z" />
+    <path android:fillColor="#5A7092" android:pathData="M26,64 H82 V69 H26 Z" />
+    <path android:fillColor="#DCD4C2" android:pathData="M26,69 H82 V70.5 H26 Z" />
+</vector>
