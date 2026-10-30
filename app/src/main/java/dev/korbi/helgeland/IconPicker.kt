@@ -141,6 +141,7 @@ fun SettingsPopup(
     iconPacks: List<IconSource>,
     stapelShown: Boolean,
     stapelOpensSettings: Boolean,
+    searchShown: Boolean,
     actions: LauncherActions,
     onDismiss: () -> Unit,
 ) {
@@ -190,6 +191,26 @@ fun SettingsPopup(
                             )
                         }
                         BubbleSwitch(stapelShown)
+                    }
+                }
+                item { HandTitle("Suchleiste", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { actions.setSearchShown(!searchShown) }
+                            .padding(horizontal = 22.dp, vertical = 6.dp),
+                    ) {
+                        Box(Modifier.size(44.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
+                            SearchGlyph(Ink)
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("auf dem Startbildschirm", style = rowStyle)
+                            Text(if (searchShown) "gedrückt halten für die Breite" else "aus", style = hintStyle)
+                        }
+                        BubbleSwitch(searchShown)
                     }
                 }
                 item {
