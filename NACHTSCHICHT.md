@@ -11,7 +11,7 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 - [x] Release-Build statt Debug: deutlich flüssiger (R8 + Compose ohne Debug-Overhead)
 - [x] Lens-Option entfernen (Google sperrt Lens für fremde Apps, siehe v1.0-Abend)
 - [x] Deinstallierte Apps machen ihren Gitterplatz frei
-- [ ] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
+- [x] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
 - [ ] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
 - [ ] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
 - [ ] Nächster Wecker klein unter Datum/Wetter
@@ -33,3 +33,7 @@ jetzt Lupe, „suchen“ und optional das Mikrofon.
 **00:20** – Deinstallierte Apps geben ihren Gitterplatz frei. Es zählt nur eine echte
 Deinstallation, nicht ein Update oder eine kurz nicht verfügbare App. Die gleiche App im
 Arbeitsprofil bleibt unberührt. 3 neue Tests (13 insgesamt, alle grün).
+
+**00:25** – Stapel-Suche: Unter den Treffern steht jetzt „Im Web suchen: „…““ und übergibt
+den Text an die Google-App (ohne Google-App: Browser). Findet sich keine App, startet Enter
+direkt die Websuche.
