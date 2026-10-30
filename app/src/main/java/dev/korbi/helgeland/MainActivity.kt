@@ -248,6 +248,13 @@ class MainActivity : ComponentActivity() {
             searchOptions.value = searchOptions.value.copy(mic = shown)
         }
 
+        override fun searchWeb(query: String) {
+            val search = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, query)
+            if (!startSafely(search)) {
+                startSafely(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(query))))
+            }
+        }
+
         override fun openVoiceSearch() {
             if (!startSafely(Intent(RecognizerIntent.ACTION_WEB_SEARCH))) startSafely(Intent(Intent.ACTION_VOICE_COMMAND))
         }
@@ -342,6 +349,7 @@ interface LauncherActions {
     fun setSearchWidth(span: Int)
     fun openWebSearch()
     fun openVoiceSearch()
+    fun searchWeb(query: String)
     fun setSearchMic(shown: Boolean)
     fun setStapelOpensSettings(opensSettings: Boolean)
     fun openClock()

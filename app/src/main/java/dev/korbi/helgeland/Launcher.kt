@@ -105,6 +105,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
@@ -670,7 +671,17 @@ private fun Drawer(
             textStyle = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White),
             cursorBrush = SolidColor(Color.White),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-            keyboardActions = KeyboardActions(onGo = { filtered.firstOrNull()?.let(launchAndClose) }),
+            keyboardActions = KeyboardActions(
+                onGo = {
+                    val first = filtered.firstOrNull()
+                    if (first != null) {
+                        launchAndClose(first)
+                    } else if (query.isNotBlank()) {
+                        actions.searchWeb(query.trim())
+                        close()
+                    }
+                },
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
@@ -717,6 +728,12 @@ private fun Drawer(
             ) {
                 if (sections == null) {
                     items(filtered, key = { it.key }) { appRow(it) }
+                    item(key = "web") {
+                        WebSearchRow(query.trim()) {
+                            actions.searchWeb(query.trim())
+                            close()
+                        }
+                    }
                 } else {
                     sections.forEach { (letter, group) ->
                         item(key = "section:$letter") { SectionHeader(letter) }
@@ -736,6 +753,29 @@ private fun Drawer(
                 )
             }
         }
+    }
+}
+
+/** Last row of a stack search: hand the query to the web. */
+@Composable
+private fun WebSearchRow(query: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 28.dp, end = 40.dp, top = 9.dp, bottom = 9.dp),
+    ) {
+        Box(Modifier.size(42.dp).background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
+            SearchGlyph(Color.White)
+        }
+        Spacer(Modifier.width(18.dp))
+        Text(
+            "Im Web suchen: „$query“",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.85f)),
+        )
     }
 }
 
