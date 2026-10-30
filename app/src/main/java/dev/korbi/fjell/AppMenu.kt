@@ -158,6 +158,26 @@ fun StapelMenuPopup(
     }
 }
 
+/** Long-press menu for the search bar: its width, and taking it off the grid. */
+@Composable
+fun SearchMenuPopup(span: Int, actions: LauncherActions, onDismiss: () -> Unit) {
+    val dismissThen = { action: () -> Unit -> onDismiss(); action() }
+    MenuCard(onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Box(Modifier.size(36.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
+                SearchGlyph(Ink)
+            }
+            Spacer(Modifier.width(12.dp))
+            Text("Suchleiste", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
+        }
+        MenuDivider()
+        MenuRow("2 Plätze breit", glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
+        MenuRow("4 Plätze breit", glyph = DrawScope::drawWideGlyph, checked = span == 4) { dismissThen { actions.setSearchWidth(4) } }
+        MenuDivider()
+        MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
+    }
+}
+
 @Composable
 private fun MenuDivider() {
     Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().height(1.dp).background(Ink.copy(alpha = 0.1f)))
@@ -226,6 +246,16 @@ private fun DrawScope.drawPencilGlyph(color: Color) {
     val stroke = size.minDimension * 0.14f
     drawLine(color, Offset(size.width * 0.15f, size.height * 0.85f), Offset(size.width * 0.85f, size.height * 0.15f), stroke, StrokeCap.Round)
     drawLine(color, Offset(size.width * 0.1f, size.height * 0.9f), Offset(size.width * 0.3f, size.height * 0.9f), stroke, StrokeCap.Round)
+}
+
+private fun DrawScope.drawNarrowGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    drawRoundRect(color, Offset(size.width * 0.22f, size.height * 0.32f), Size(size.width * 0.56f, size.height * 0.36f), CornerRadius(size.height * 0.18f), style = Stroke(stroke))
+}
+
+private fun DrawScope.drawWideGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    drawRoundRect(color, Offset(stroke / 2, size.height * 0.32f), Size(size.width - stroke, size.height * 0.36f), CornerRadius(size.height * 0.18f), style = Stroke(stroke))
 }
 
 private fun DrawScope.drawListGlyph(color: Color) {

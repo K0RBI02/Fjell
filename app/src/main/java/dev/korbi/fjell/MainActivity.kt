@@ -2,14 +2,16 @@ package dev.korbi.fjell
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.AlarmClock
-import android.widget.Toast
 import android.provider.Settings
+import android.speech.RecognizerIntent
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -215,15 +217,37 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun moveInGrid(from: Int, to: Int) {
-            val slots = grid.value.toMutableList()
-            slots[from] = slots[to].also { slots[to] = slots[from] }
-            setGrid(slots)
+            setGrid(GridSlots.move(grid.value, from, to, GRID_COLUMNS))
         }
 
-        override fun openClock() = startSafely(Intent(AlarmClock.ACTION_SHOW_ALARMS))
+        override fun setSearchShown(shown: Boolean) {
+            val placed = if (shown) GridSlots.placeSearch(grid.value, 2, GRID_COLUMNS) else GridSlots.withoutSearch(grid.value)
+            if (placed != null) setGrid(placed)
+            else Toast.makeText(this@MainActivity, "Die Suchleiste braucht 2 freie Plätze nebeneinander", Toast.LENGTH_SHORT).show()
+        }
 
-        override fun openCalendar() =
+        override fun setSearchWidth(span: Int) {
+            val resized = GridSlots.resizeSearch(grid.value, span, GRID_COLUMNS)
+            if (resized != null) setGrid(resized)
+            else Toast.makeText(this@MainActivity, "Dafür ist in keiner Reihe genug Platz frei", Toast.LENGTH_SHORT).show()
+        }
+
+        override fun openWebSearch() {
+            val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity")
+            if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
+        }
+
+        override fun openVoiceSearch() {
+            if (!startSafely(Intent(RecognizerIntent.ACTION_WEB_SEARCH))) startSafely(Intent(Intent.ACTION_VOICE_COMMAND))
+        }
+
+        override fun openClock() {
+            startSafely(Intent(AlarmClock.ACTION_SHOW_ALARMS))
+        }
+
+        override fun openCalendar() {
             startSafely(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR))
+        }
 
         override fun expandNotifications() = this@MainActivity.expandNotifications()
 
@@ -266,19 +290,21 @@ class MainActivity : ComponentActivity() {
             pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
         }
 
-        override fun openHomeSettings() = startSafely(Intent(Settings.ACTION_HOME_SETTINGS))
+        override fun openHomeSettings() {
+            startSafely(Intent(Settings.ACTION_HOME_SETTINGS))
+        }
     }
 
-    private fun startSafely(intent: Intent) {
-        runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    }
+    /** False if nothing on the phone handles [intent]. */
+    private fun startSafely(intent: Intent): Boolean =
+        runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
     companion object {
         const val GRID_COLUMNS = 4
         const val GRID_SIZE = GRID_COLUMNS * 3
 
-        /** Grid slot value for the stack button (never a real app key). */
-        const val STAPEL_KEY = "@stapel"
+        const val STAPEL_KEY = GridSlots.STAPEL_KEY
+        private const val GOOGLE_APP = "com.google.android.googlequicksearchbox"
         const val WEATHER_MAX_AGE_MS = 30 * 60 * 1000L
     }
 }
@@ -299,6 +325,12 @@ interface LauncherActions {
     fun toggleGrid(app: AppEntry)
     fun moveInGrid(from: Int, to: Int)
     fun setStapelShown(shown: Boolean)
+    fun setSearchShown(shown: Boolean)
+
+    /** [span] is 2 or 4 slots. */
+    fun setSearchWidth(span: Int)
+    fun openWebSearch()
+    fun openVoiceSearch()
     fun setStapelOpensSettings(opensSettings: Boolean)
     fun openClock()
     fun openCalendar()

@@ -75,7 +75,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
@@ -209,6 +211,7 @@ fun Launcher(
                     iconPacks = iconPacks,
                     stapelShown = MainActivity.STAPEL_KEY in gridKeys,
                     stapelOpensSettings = stapelOpensSettings,
+                    searchShown = GridSlots.SEARCH_KEY in gridKeys,
                     actions = actions,
                     onDismiss = { settingsOpen = false },
                 )
@@ -257,10 +260,13 @@ private fun Home(
     val threshold = with(density) { 72.dp.toPx() }
     val slots = remember(apps, gridKeys) {
         val byKey = apps.associateBy { it.key }
+        val searchSpan = GridSlots.search(gridKeys)?.count() ?: 0
         gridKeys.map { key ->
             when (key) {
                 null -> null
-                MainActivity.STAPEL_KEY -> GridItem.Stapel
+                GridSlots.STAPEL_KEY -> GridItem.Stapel
+                GridSlots.SEARCH_KEY -> GridItem.Search(searchSpan)
+                GridSlots.COVERED -> GridItem.Covered
                 else -> byKey[key]?.let(GridItem::App)
             }
         }
@@ -340,7 +346,17 @@ private sealed interface GridItem {
 
     /** The button that opens the stack, for getting there without swiping. */
     data object Stapel : GridItem {
-        override val key = MainActivity.STAPEL_KEY
+        override val key = GridSlots.STAPEL_KEY
+    }
+
+    /** Our own search bar, [span] slots wide. */
+    data class Search(val span: Int) : GridItem {
+        override val key = GridSlots.SEARCH_KEY
+    }
+
+    /** A slot the search bar reaches into from the left. */
+    data object Covered : GridItem {
+        override val key = GridSlots.COVERED
     }
 }
 
@@ -381,23 +397,27 @@ private fun AppGrid(
         }
         val hover = dragFrom?.let { slotUnder(it, dragOffset) }
 
+        fun Modifier.atSlot(i: Int) = offset { IntOffset(((i % columns) * cellW).roundToInt(), ((i / columns) * cellH).roundToInt()) }
+
+        if (dragFrom != null) {
+            slots.indices.forEach { i ->
+                Box(Modifier.atSlot(i).size(cellSize), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(iconSize).border(1.5.dp, Color.White.copy(alpha = if (i == hover) 0.95f else 0.35f), slotShape))
+                }
+            }
+        }
+
         slots.forEachIndexed { i, item ->
+            if (item == null || item == GridItem.Covered) return@forEachIndexed
             val isDragged = dragFrom == i
+            val span = (item as? GridItem.Search)?.span ?: 1
             Box(
                 Modifier
-                    .offset { IntOffset(((i % columns) * cellW).roundToInt(), ((i / columns) * cellH).roundToInt()) }
-                    .size(cellSize)
+                    .atSlot(i)
+                    .size(cellSize.width * span, cellSize.height)
                     .zIndex(if (isDragged) 1f else 0f),
                 contentAlignment = Alignment.Center,
             ) {
-                if (dragFrom != null) {
-                    Box(
-                        Modifier
-                            .size(iconSize)
-                            .border(1.5.dp, Color.White.copy(alpha = if (i == hover) 0.95f else 0.35f), slotShape),
-                    )
-                }
-                if (item == null) return@Box
                 Box(
                     Modifier
                         .graphicsLayer {
@@ -421,6 +441,10 @@ private fun AppGrid(
                                     Press.Tap -> when (item) {
                                         is GridItem.App -> actions.launch(item.entry)
                                         GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
+                                        // The mic sits in a square at the bar's right end.
+                                        is GridItem.Search ->
+                                            if (down.position.x > size.width - size.height) actions.openVoiceSearch() else actions.openWebSearch()
+                                        GridItem.Covered -> Unit
                                     }
                                     Press.Cancel -> Unit
                                     Press.Long -> {
@@ -465,10 +489,48 @@ private fun AppGrid(
                                 )
                             }
                         }
+                        is GridItem.Search -> {
+                            SearchBar(Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
+                            if (menuSlot == i) SearchMenuPopup(span, actions, onDismiss = { menuSlot = null })
+                        }
+                        GridItem.Covered -> Unit
                     }
                 }
             }
         }
+    }
+}
+
+/** The home search bar: a long bubble with a magnifier, a hand-written hint and a mic. */
+@Composable
+private fun SearchBar(modifier: Modifier) {
+    val dark = isSystemInDarkTheme()
+    val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
+    val glyph = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .background(bubble, RoundedCornerShape(36))
+            .padding(horizontal = 14.dp)
+            .semantics { contentDescription = "Suche" },
+    ) {
+        SearchGlyph(glyph)
+        Spacer(Modifier.width(10.dp))
+        Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
+        MicGlyph(glyph)
+    }
+}
+
+/** A small microphone. */
+@Composable
+fun MicGlyph(color: Color) {
+    Canvas(Modifier.size(20.dp)) {
+        val stroke = size.minDimension * 0.1f
+        val w = size.width
+        val h = size.height
+        drawRoundRect(color, Offset(w * 0.36f, h * 0.06f), Size(w * 0.28f, h * 0.5f), CornerRadius(w * 0.14f))
+        drawArc(color, 0f, 180f, false, Offset(w * 0.2f, h * 0.2f), Size(w * 0.6f, h * 0.52f), style = Stroke(stroke, cap = StrokeCap.Round))
+        drawLine(color, Offset(w * 0.5f, h * 0.72f), Offset(w * 0.5f, h * 0.92f), stroke, StrokeCap.Round)
     }
 }
 
@@ -671,7 +733,7 @@ private fun Drawer(
 
 /** A small magnifying glass. */
 @Composable
-private fun SearchGlyph(color: Color) {
+fun SearchGlyph(color: Color) {
     Canvas(Modifier.size(20.dp)) {
         val stroke = size.minDimension * 0.11f
         val radius = size.minDimension * 0.32f
