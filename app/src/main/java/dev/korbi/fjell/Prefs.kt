@@ -15,6 +15,11 @@ class Prefs(context: Context) {
 
     val hasChosenGrid: Boolean get() = sp.contains("grid")
 
+    /** App keys, most recently launched first. */
+    var recent: List<String>
+        get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
+        set(value) = sp.edit().putString("recent", value.joinToString("\n")).apply()
+
     /** What the 3x3 button does: open the stack (default) or the settings. */
     var stapelOpensSettings: Boolean
         get() = sp.getBoolean("stapelOpensSettings", false)

@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
 
     private val apps = mutableStateOf<List<AppEntry>>(emptyList())
     private val grid = mutableStateOf<List<String?>>(List(GRID_SIZE) { null })
+    private val recent = mutableStateOf<List<String>>(emptyList())
     private val temperature = mutableStateOf<Int?>(null)
     private var weatherFetchedAt = 0L
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
         stapelOpensSettings.value = prefs.stapelOpensSettings
         searchOptions.value = SearchBarOptions(mic = prefs.searchMic)
         grid.value = prefs.grid
+        recent.value = prefs.recent
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
         temperature.value = prefs.lastTemperature
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
             Launcher(
                 apps = apps.value,
                 gridKeys = grid.value,
+                recentKeys = recent.value,
                 temperature = temperature.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
@@ -183,7 +186,9 @@ class MainActivity : ComponentActivity() {
 
     private val actions = object : LauncherActions {
         override fun launch(app: AppEntry) {
-            runCatching { repo.launch(app) }
+            if (runCatching { repo.launch(app) }.isFailure) return
+            recent.value = (listOf(app.key) + recent.value.filter { it != app.key }).take(RECENT_KEPT)
+            prefs.recent = recent.value
         }
 
         override fun appInfo(app: AppEntry) {
@@ -319,6 +324,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val GRID_COLUMNS = 4
+        private const val RECENT_KEPT = 12
         const val GRID_SIZE = GRID_COLUMNS * 3
 
         const val STAPEL_KEY = GridSlots.STAPEL_KEY

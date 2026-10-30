@@ -12,7 +12,7 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 - [x] Lens-Option entfernen (Google sperrt Lens für fremde Apps, siehe v1.0-Abend)
 - [x] Deinstallierte Apps machen ihren Gitterplatz frei
 - [x] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
-- [ ] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
+- [x] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
 - [ ] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
 - [ ] Nächster Wecker klein unter Datum/Wetter
 - [ ] Popups: sanfte Ausblend-Animation statt hartem Verschwinden
@@ -37,3 +37,8 @@ Arbeitsprofil bleibt unberührt. 3 neue Tests (13 insgesamt, alle grün).
 **00:25** – Stapel-Suche: Unter den Treffern steht jetzt „Im Web suchen: „…““ und übergibt
 den Text an die Google-App (ohne Google-App: Browser). Findet sich keine App, startet Enter
 direkt die Websuche.
+
+**00:30** – Stapel: Ganz oben steht „zuletzt“ mit den 4 zuletzt gestarteten Apps, die nicht im
+Gitter liegen, als Bubble-Reihe. Der Launcher merkt sich das selbst (keine
+Nutzungsdaten-Berechtigung nötig). Beim Suchen ist die Reihe ausgeblendet, das Alphabet
+springt weiterhin richtig.
