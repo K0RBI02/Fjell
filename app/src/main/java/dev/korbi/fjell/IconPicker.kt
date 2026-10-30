@@ -47,15 +47,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -65,8 +64,7 @@ import androidx.compose.ui.unit.sp
 // Bluish white and near-black, pulled from the wallpaper's sky and mountain.
 val PopupColor = Color(0xF5EDF0F5)
 val Ink = Color(0xFF1A1F2B)
-private val Card = Color(0xFF536A92).copy(alpha = 0.10f)
-private val Sky = Color(0xFFA3ADBE)
+private val Card = Color.White.copy(alpha = 0.55f)
 private val Night = Color(0xFF1C2233)
 private val Cream = Color(0xFFE8E2D0)
 private val Muted = Ink.copy(alpha = 0.55f)
@@ -118,10 +116,18 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                     transformOrigin = TransformOrigin(0.5f, 1f)
                 }
                 .clip(RoundedCornerShape(34.dp))
-                .background(PopupColor)
                 // Swallow taps so they don't reach the dismiss layer behind.
                 .clickable(noRipple, null) {},
         ) {
+            // The barn scene from the same series, washed out so it stays a backdrop.
+            Image(
+                painter = painterResource(R.drawable.wp_barn),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.BottomCenter,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.62f)))
             content()
         }
     }
@@ -141,7 +147,7 @@ fun SettingsPopup(
     BackHandler(onBack = onDismiss)
     FjellPopup(onDismiss) {
         Column(Modifier.fillMaxSize()) {
-            HorizonHeader("Einstellungen")
+            PopupHeader("Einstellungen")
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -203,37 +209,28 @@ fun SettingsPopup(
     }
 }
 
-/**
- * Popup title on a strip of sky, with the wallpaper's horizon bands underneath,
- * so every popup reads like a slice of the poster.
- */
+/** Hand-written popup title, with an optional ‹ to go back. */
 @Composable
-fun HorizonHeader(title: String, onBack: (() -> Unit)? = null) {
-    Column(Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xFF97A3B8), Sky)))
-                .padding(start = if (onBack != null) 8.dp else 24.dp, end = 24.dp, top = 22.dp, bottom = 12.dp),
-        ) {
-            if (onBack != null) {
-                Text(
-                    "‹",
-                    style = TextStyle(fontFamily = Lato, fontSize = 34.sp, color = Color.White),
-                    modifier = Modifier.clickable(onClick = onBack).padding(horizontal = 12.dp),
-                )
-            }
+fun PopupHeader(title: String, onBack: (() -> Unit)? = null) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = if (onBack != null) 8.dp else 24.dp, end = 24.dp, top = 22.dp, bottom = 4.dp),
+    ) {
+        if (onBack != null) {
             Text(
-                title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = TextStyle(fontFamily = IndieFlower, fontSize = 32.sp, color = Color.White, shadow = Shadow(Color(0x33000000), Offset(0f, 2f), 10f)),
+                "‹",
+                style = TextStyle(fontFamily = Lato, fontSize = 34.sp, color = Ink),
+                modifier = Modifier.clickable(onClick = onBack).padding(horizontal = 12.dp),
             )
         }
-        Box(Modifier.fillMaxWidth().height(7.dp).background(Color(0xFF536A92)))
-        Box(Modifier.fillMaxWidth().height(10.dp).background(Night))
-        Box(Modifier.fillMaxWidth().height(3.dp).background(Cream))
+        Text(
+            title,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(fontFamily = IndieFlower, fontSize = 32.sp, color = Ink),
+        )
     }
 }
 
@@ -319,7 +316,7 @@ fun IconPickerPopup(
             return@FjellPopup
         }
         Column(Modifier.fillMaxSize()) {
-            HorizonHeader("Icon von ${app.label}")
+            PopupHeader("Icon von ${app.label}")
             LazyColumn(
                 contentPadding = PaddingValues(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -415,7 +412,7 @@ private fun PackBrowser(
     }
 
     Column(Modifier.fillMaxSize()) {
-        HorizonHeader(pack.label, onBack = onBack)
+        PopupHeader(pack.label, onBack = onBack)
         BasicTextField(
             value = query,
             onValueChange = { query = it },
