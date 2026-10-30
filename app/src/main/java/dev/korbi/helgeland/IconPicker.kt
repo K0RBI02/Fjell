@@ -146,6 +146,7 @@ fun SettingsPopup(
     stapelOpensSettings: Boolean,
     searchShown: Boolean,
     searchOptions: SearchBarOptions,
+    hiddenApps: List<AppEntry>,
     actions: LauncherActions,
     onDismiss: () -> Unit,
 ) {
@@ -205,6 +206,24 @@ fun SettingsPopup(
                 item {
                     ToggleRow(label = "Mikrofon", on = searchOptions.mic, onToggle = { actions.setSearchMic(!searchOptions.mic) }) {
                         GlyphBubble { MicGlyph(Ink) }
+                    }
+                }
+                if (hiddenApps.isNotEmpty()) {
+                    item { HandTitle("Ausgeblendet", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
+                    items(hiddenApps.size) { i ->
+                        val app = hiddenApps[i]
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { actions.setHidden(app, false) }
+                                .padding(horizontal = 22.dp, vertical = 6.dp),
+                        ) {
+                            AppIcon(app, 44.dp, actions)
+                            Spacer(Modifier.width(16.dp))
+                            Text(app.label, style = rowStyle, modifier = Modifier.weight(1f))
+                            Text("einblenden", style = hintStyle)
+                        }
                     }
                 }
                 item {

@@ -13,7 +13,7 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 - [x] Deinstallierte Apps machen ihren Gitterplatz frei
 - [x] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
 - [x] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
-- [ ] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
+- [x] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
 - [ ] Nächster Wecker klein unter Datum/Wetter
 - [ ] Popups: sanfte Ausblend-Animation statt hartem Verschwinden
 - [ ] Gitter: leichter Vibrations-Tick, wenn beim Ziehen ein neuer Platz angesteuert wird
@@ -42,3 +42,8 @@ direkt die Websuche.
 Gitter liegen, als Bubble-Reihe. Der Launcher merkt sich das selbst (keine
 Nutzungsdaten-Berechtigung nötig). Beim Suchen ist die Reihe ausgeblendet, das Alphabet
 springt weiterhin richtig.
+
+**00:35** – Apps ausblenden: Im Stapel eine App gedrückt halten → „Im Stapel ausblenden“
+(Symbol: durchgestrichenes Auge). Die Suche findet sie weiterhin, dort steht dann „Wieder im
+Stapel zeigen“. In den Einstellungen listet der Abschnitt „Ausgeblendet“ alle versteckten
+Apps, ein Tipp blendet sie wieder ein.
