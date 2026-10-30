@@ -208,11 +208,6 @@ fun SettingsPopup(
                     }
                 }
                 item {
-                    ToggleRow(label = "Google Lens", on = searchOptions.lens, onToggle = { actions.setSearchLens(!searchOptions.lens) }) {
-                        GlyphBubble { LensGlyph(Ink) }
-                    }
-                }
-                item {
                     Text(
                         "Als Standard-Launcher festlegen",
                         maxLines = 1,

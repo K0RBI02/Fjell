@@ -387,7 +387,7 @@ private fun AppGrid(
     val haptics = LocalHapticFeedback.current
     // The gesture handlers below outlive recompositions, so they must read these fresh.
     val opensSettings by rememberUpdatedState(stapelOpensSettings)
-    val searchButtons by rememberUpdatedState(searchOptions.trailing)
+    val searchHasMic by rememberUpdatedState(searchOptions.mic)
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
@@ -449,15 +449,9 @@ private fun AppGrid(
                                     Press.Tap -> when (item) {
                                         is GridItem.App -> actions.launch(item.entry)
                                         GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
-                                        // Mic and Lens each own a square at the bar's right end.
-                                        is GridItem.Search -> {
-                                            val fromRight = ((size.width - down.position.x) / size.height).toInt()
-                                            when (searchButtons.getOrNull(fromRight)) {
-                                                SearchButton.Mic -> actions.openVoiceSearch()
-                                                SearchButton.Lens -> actions.openLens()
-                                                null -> actions.openWebSearch()
-                                            }
-                                        }
+                                        // The mic owns a square at the bar's right end.
+                                        is GridItem.Search ->
+                                            if (searchHasMic && down.position.x > size.width - size.height) actions.openVoiceSearch() else actions.openWebSearch()
                                         GridItem.Covered -> Unit
                                     }
                                     Press.Cancel -> Unit
@@ -504,7 +498,7 @@ private fun AppGrid(
                             }
                         }
                         is GridItem.Search -> {
-                            SearchBar(searchOptions, span, Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
+                            SearchBar(searchOptions, Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
                             if (menuSlot == i) SearchMenuPopup(span, searchOptions, actions, onDismiss = { menuSlot = null })
                         }
                         GridItem.Covered -> Unit
@@ -515,20 +509,14 @@ private fun AppGrid(
     }
 }
 
-enum class SearchButton { Mic, Lens }
+data class SearchBarOptions(val mic: Boolean)
 
-data class SearchBarOptions(val mic: Boolean, val lens: Boolean) {
-    /** Buttons at the bar's right end, listed from the right edge inwards. */
-    val trailing: List<SearchButton> get() = listOfNotNull(SearchButton.Mic.takeIf { mic }, SearchButton.Lens.takeIf { lens })
-}
-
-/** The home search bar: a long bubble with a magnifier, a hand-written hint and optional mic and Lens. */
+/** The home search bar: a long bubble with a magnifier, a hand-written hint and an optional mic. */
 @Composable
-private fun SearchBar(options: SearchBarOptions, span: Int, modifier: Modifier) {
+private fun SearchBar(options: SearchBarOptions, modifier: Modifier) {
     val dark = isSystemInDarkTheme()
     val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
     val glyph = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
-    val buttons = options.trailing
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -538,29 +526,14 @@ private fun SearchBar(options: SearchBarOptions, span: Int, modifier: Modifier) 
         Spacer(Modifier.width(14.dp))
         SearchGlyph(glyph)
         Spacer(Modifier.width(10.dp))
-        // On a 2-wide bar with both buttons there's no room left for the hint.
-        Box(Modifier.weight(1f)) {
-            if (span > 2 || buttons.size < 2) {
-                Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)))
-            }
+        Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
+        if (options.mic) {
+            // A square as tall as the bar; the tap handler relies on that.
+            Box(Modifier.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) { MicGlyph(glyph) }
+        } else {
+            Spacer(Modifier.width(14.dp))
         }
-        // Each button sits in a square as tall as the bar; the tap handler relies on that.
-        buttons.asReversed().forEach { button ->
-            Box(Modifier.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) {
-                when (button) {
-                    SearchButton.Mic -> MicGlyph(glyph)
-                    SearchButton.Lens -> LensGlyph(glyph)
-                }
-            }
-        }
-        if (buttons.isEmpty()) Spacer(Modifier.width(14.dp))
     }
-}
-
-/** Google Lens: four corner brackets around a dot. */
-@Composable
-fun LensGlyph(color: Color) {
-    Canvas(Modifier.size(20.dp)) { drawLensGlyph(color) }
 }
 
 /** A small microphone. */
