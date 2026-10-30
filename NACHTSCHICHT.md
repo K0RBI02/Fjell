@@ -10,7 +10,7 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 
 - [x] Release-Build statt Debug: deutlich flüssiger (R8 + Compose ohne Debug-Overhead)
 - [x] Lens-Option entfernen (Google sperrt Lens für fremde Apps, siehe v1.0-Abend)
-- [ ] Deinstallierte Apps machen ihren Gitterplatz frei
+- [x] Deinstallierte Apps machen ihren Gitterplatz frei
 - [ ] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
 - [ ] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
 - [ ] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
@@ -29,3 +29,7 @@ gerade im USB-Modus ohne Debugging, Installation folgt, sobald es wieder erreich
 **00:15** – Lens-Option entfernt: Google lehnt Lens-Aufrufe aus fremden Apps ab
 („Lens eligibility error“), ein Knopf ohne Funktion wäre nur verwirrend. Die Suchleiste hat
 jetzt Lupe, „suchen“ und optional das Mikrofon.
+
+**00:20** – Deinstallierte Apps geben ihren Gitterplatz frei. Es zählt nur eine echte
+Deinstallation, nicht ein Update oder eine kurz nicht verfügbare App. Die gleiche App im
+Arbeitsprofil bleibt unberührt. 3 neue Tests (13 insgesamt, alle grün).

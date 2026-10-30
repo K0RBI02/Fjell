@@ -83,7 +83,10 @@ class MainActivity : ComponentActivity() {
         }
 
         reload()
-        unwatch = repo.watch { reload() }
+        unwatch = repo.watch(
+            onRemoved = { pkg, user -> setGrid(grid.value.map { key -> if (key != null && AppEntry.isOf(key, pkg, user.hashCode())) null else key }) },
+            onChange = { reload() },
+        )
 
         setContent {
             Launcher(
