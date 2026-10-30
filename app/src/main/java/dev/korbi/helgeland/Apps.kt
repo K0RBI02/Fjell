@@ -14,6 +14,12 @@ data class AppEntry(
 ) {
     /** Stable id used for the home grid; includes the user so work-profile twins stay distinct. */
     val key: String = "${component.flattenToString()}#${user.hashCode()}"
+
+    companion object {
+        /** Whether [key] belongs to an app of [packageName] for the user with [userHash] (see [key]). */
+        fun isOf(key: String, packageName: String, userHash: Int): Boolean =
+            key.startsWith("$packageName/") && key.endsWith("#$userHash")
+    }
 }
 
 class AppRepository(private val context: Context) {
@@ -43,10 +49,17 @@ class AppRepository(private val context: Context) {
         launcherApps.startAppDetailsActivity(app.component, app.user, null, null)
     }
 
-    /** Calls [onChange] whenever an app is installed, removed or updated. */
-    fun watch(onChange: () -> Unit): () -> Unit {
+    /**
+     * Calls [onChange] whenever an app is installed, removed or updated, and
+     * [onRemoved] first when it's really uninstalled (not just updated).
+     */
+    fun watch(onRemoved: (String, UserHandle) -> Unit, onChange: () -> Unit): () -> Unit {
         val callback = object : LauncherApps.Callback() {
-            override fun onPackageRemoved(packageName: String, user: UserHandle) = onChange()
+            override fun onPackageRemoved(packageName: String, user: UserHandle) {
+                onRemoved(packageName, user)
+                onChange()
+            }
+
             override fun onPackageAdded(packageName: String, user: UserHandle) = onChange()
             override fun onPackageChanged(packageName: String, user: UserHandle) = onChange()
             override fun onPackagesAvailable(names: Array<out String>, user: UserHandle, replacing: Boolean) = onChange()
