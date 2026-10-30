@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A tiny Sør-Helgeland scene: mountain, horizon and a red boathouse. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#536A92" android:pathData="M26,58 L62,40 L68,40 L68,58 Z" />
+    <path android:fillColor="#1C2233" android:pathData="M26,58 L52,46 L62,46 L82,58 Z" />
+    <path android:fillColor="#E3CBC3" android:pathData="M68,40 L82,40 L82,58 Z" />
+    <path android:fillColor="#536A92" android:pathData="M26,58 H82 V63 H26 Z" />
+    <path android:fillColor="#2A1517" android:pathData="M44,63 L49,58 L54,63 V71 H44 Z" />
+    <path android:fillColor="#E3CBC3" android:pathData="M49,58 H58 L63,63 H54 Z" />
+    <path android:fillColor="#C14A42" android:pathData="M54,63 H63 V71 H54 Z" />
+    <path android:fillColor="#E8E2D0" android:pathData="M26,71 H82 V73 H26 Z" />
+</vector>
