@@ -27,12 +27,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
@@ -47,15 +46,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -66,6 +68,7 @@ val PopupColor = Color(0xF5EDF0F5)
 val Ink = Color(0xFF1A1F2B)
 private val Card = Color.White.copy(alpha = 0.55f)
 private val Night = Color(0xFF1C2233)
+private val Mountain = Color(0xFF536A92)
 private val Cream = Color(0xFFE8E2D0)
 private val Muted = Ink.copy(alpha = 0.55f)
 private val rowStyle = TextStyle(fontFamily = Lato, fontSize = 17.sp, color = Ink)
@@ -74,7 +77,7 @@ private val hintStyle = TextStyle(fontFamily = Lato, fontSize = 13.sp, color = M
 /** Captions for the bubble row in the settings. */
 private val SHORT_LABELS = mapOf(
     IconStyle.Original to "Original",
-    IconStyle.Grayscale to "Schwarz-weiß",
+    IconStyle.Grayscale to "Grau",
     IconStyle.Mono to "Einfach",
 )
 
@@ -142,6 +145,7 @@ fun SettingsPopup(
     stapelShown: Boolean,
     stapelOpensSettings: Boolean,
     searchShown: Boolean,
+    searchOptions: SearchBarOptions,
     actions: LauncherActions,
     onDismiss: () -> Unit,
 ) {
@@ -157,72 +161,70 @@ fun SettingsPopup(
                 item {
                     val choices = BUILT_IN_STYLES.map { (style) -> style to SHORT_LABELS.getValue(style) } +
                         iconPacks.map { IconStyle.Pack(it.pkg) to it.label.removeSuffix(" Icons").removeSuffix(" Icon Pack") }
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 18.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        items(choices, key = { it.first.id }) { (style, label) ->
-                            BubbleChoice(label = label, selected = style == globalStyle, onClick = { actions.setGlobalIconStyle(style) }) {
-                                if (sampleApp != null) StylePreview(sampleApp, style, actions, size = 58.dp)
+                    // Equal columns, four to a row, so every choice is fully visible.
+                    Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        choices.chunked(4).forEach { row ->
+                            Row(Modifier.fillMaxWidth()) {
+                                row.forEach { (style, label) ->
+                                    BubbleChoice(
+                                        label = label,
+                                        selected = style == globalStyle,
+                                        onClick = { actions.setGlobalIconStyle(style) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        if (sampleApp != null) StylePreview(sampleApp, style, actions, size = 54.dp)
+                                    }
+                                }
+                                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                             }
                         }
                     }
                 }
                 item { HandTitle("3×3-Knopf", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
                 item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { actions.setStapelShown(!stapelShown) }
-                            .padding(horizontal = 22.dp, vertical = 6.dp),
-                    ) {
-                        StapelIcon(44.dp)
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("auf dem Startbildschirm", style = rowStyle)
-                            Text(
-                                when {
-                                    !stapelShown -> "aus"
-                                    stapelOpensSettings -> "öffnet die Einstellungen"
-                                    else -> "öffnet den Stapel"
-                                },
-                                style = hintStyle,
-                            )
-                        }
-                        BubbleSwitch(stapelShown)
-                    }
+                    ToggleRow(
+                        label = "auf dem Startbildschirm",
+                        hint = when {
+                            !stapelShown -> "aus"
+                            stapelOpensSettings -> "öffnet die Einstellungen"
+                            else -> "öffnet den Stapel"
+                        },
+                        on = stapelShown,
+                        onToggle = { actions.setStapelShown(!stapelShown) },
+                    ) { StapelIcon(44.dp) }
                 }
                 item { HandTitle("Suchleiste", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
                 item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { actions.setSearchShown(!searchShown) }
-                            .padding(horizontal = 22.dp, vertical = 6.dp),
-                    ) {
-                        Box(Modifier.size(44.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
-                            SearchGlyph(Ink)
-                        }
-                        Spacer(Modifier.width(16.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text("auf dem Startbildschirm", style = rowStyle)
-                            Text(if (searchShown) "gedrückt halten für die Breite" else "aus", style = hintStyle)
-                        }
-                        BubbleSwitch(searchShown)
+                    ToggleRow(
+                        label = "auf dem Startbildschirm",
+                        hint = if (searchShown) "gedrückt halten für die Breite" else "aus",
+                        on = searchShown,
+                        onToggle = { actions.setSearchShown(!searchShown) },
+                    ) { GlyphBubble { SearchGlyph(Ink) } }
+                }
+                item {
+                    ToggleRow(label = "Mikrofon", on = searchOptions.mic, onToggle = { actions.setSearchMic(!searchOptions.mic) }) {
+                        GlyphBubble { MicGlyph(Ink) }
+                    }
+                }
+                item {
+                    ToggleRow(label = "Google Lens", on = searchOptions.lens, onToggle = { actions.setSearchLens(!searchOptions.lens) }) {
+                        GlyphBubble { LensGlyph(Ink) }
                     }
                 }
                 item {
                     Text(
                         "Als Standard-Launcher festlegen",
-                        style = TextStyle(fontFamily = IndieFlower, fontSize = 20.sp, color = Cream),
+                        maxLines = 1,
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = Cream),
                         modifier = Modifier
                             .padding(start = 22.dp, end = 22.dp, top = 18.dp)
+                            .fillMaxWidth()
                             .clip(RoundedCornerShape(50))
                             .background(Night)
                             .clickable(onClick = actions::openHomeSettings)
-                            .padding(horizontal = 22.dp, vertical = 10.dp),
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
                     )
                 }
             }
@@ -262,11 +264,16 @@ private fun HandTitle(text: String, modifier: Modifier = Modifier) {
 
 /** A preview bubble with a hand-written caption; the chosen one gets a ring. */
 @Composable
-private fun BubbleChoice(label: String, selected: Boolean, onClick: () -> Unit, preview: @Composable () -> Unit) {
+private fun BubbleChoice(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    preview: @Composable () -> Unit,
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(84.dp)
+        modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 6.dp),
@@ -274,35 +281,61 @@ private fun BubbleChoice(label: String, selected: Boolean, onClick: () -> Unit, 
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(68.dp)
+                .size(64.dp)
                 .border(2.dp, if (selected) Night else Color.Transparent, RoundedCornerShape(36)),
         ) { preview() }
         Text(
             label,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 16.sp, color = if (selected) Ink else Muted),
+            style = TextStyle(fontFamily = IndieFlower, fontSize = 15.sp, color = if (selected) Ink else Muted),
             modifier = Modifier.padding(top = 4.dp),
         )
     }
 }
 
-/** An on/off pill whose knob is a little bubble. */
+/** A settings row: leading bubble, label with optional hint, switch at the end. */
+@Composable
+private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit, hint: String? = null, leading: @Composable () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 22.dp, vertical = 6.dp),
+    ) {
+        leading()
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = rowStyle)
+            if (hint != null) Text(hint, style = hintStyle)
+        }
+        BubbleSwitch(on)
+    }
+}
+
+@Composable
+private fun GlyphBubble(glyph: @Composable () -> Unit) {
+    Box(Modifier.size(44.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) { glyph() }
+}
+
+/** On/off switch: mountain-blue track when on, a white bubble knob that glides across. */
 @Composable
 private fun BubbleSwitch(on: Boolean) {
-    val knob by animateFloatAsState(if (on) 1f else 0f, tween(180), label = "switch")
+    val progress by animateFloatAsState(if (on) 1f else 0f, tween(200), label = "switch")
+    val track = lerp(Ink.copy(alpha = 0.14f), Mountain, progress)
     Box(
         Modifier
-            .size(width = 48.dp, height = 28.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (on) Night else Ink.copy(alpha = 0.15f))
+            .size(width = 46.dp, height = 26.dp)
+            .background(track, RoundedCornerShape(50))
             .padding(3.dp),
     ) {
         Box(
             Modifier
-                .offset(x = 20.dp * knob)
-                .size(22.dp)
-                .background(if (on) Cream else Color.White, RoundedCornerShape(36)),
+                .offset(x = 20.dp * progress)
+                .size(20.dp)
+                .shadow(2.dp, CircleShape)
+                .background(Color.White, CircleShape),
         )
     }
 }

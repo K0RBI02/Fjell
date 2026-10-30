@@ -160,7 +160,7 @@ fun StapelMenuPopup(
 
 /** Long-press menu for the search bar: its width, and taking it off the grid. */
 @Composable
-fun SearchMenuPopup(span: Int, actions: LauncherActions, onDismiss: () -> Unit) {
+fun SearchMenuPopup(span: Int, options: SearchBarOptions, actions: LauncherActions, onDismiss: () -> Unit) {
     val dismissThen = { action: () -> Unit -> onDismiss(); action() }
     MenuCard(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -173,6 +173,9 @@ fun SearchMenuPopup(span: Int, actions: LauncherActions, onDismiss: () -> Unit) 
         MenuDivider()
         MenuRow("2 Plätze breit", glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
         MenuRow("4 Plätze breit", glyph = DrawScope::drawWideGlyph, checked = span == 4) { dismissThen { actions.setSearchWidth(4) } }
+        MenuDivider()
+        MenuRow("Mikrofon", glyph = DrawScope::drawMicGlyph, checked = options.mic) { actions.setSearchMic(!options.mic) }
+        MenuRow("Google Lens", glyph = DrawScope::drawLensGlyph, checked = options.lens) { actions.setSearchLens(!options.lens) }
         MenuDivider()
         MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
     }
@@ -246,6 +249,28 @@ private fun DrawScope.drawPencilGlyph(color: Color) {
     val stroke = size.minDimension * 0.14f
     drawLine(color, Offset(size.width * 0.15f, size.height * 0.85f), Offset(size.width * 0.85f, size.height * 0.15f), stroke, StrokeCap.Round)
     drawLine(color, Offset(size.width * 0.1f, size.height * 0.9f), Offset(size.width * 0.3f, size.height * 0.9f), stroke, StrokeCap.Round)
+}
+
+fun DrawScope.drawMicGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    val w = size.width
+    val h = size.height
+    drawRoundRect(color, Offset(w * 0.36f, h * 0.06f), Size(w * 0.28f, h * 0.5f), CornerRadius(w * 0.14f))
+    drawArc(color, 0f, 180f, false, Offset(w * 0.2f, h * 0.2f), Size(w * 0.6f, h * 0.52f), style = Stroke(stroke, cap = StrokeCap.Round))
+    drawLine(color, Offset(w * 0.5f, h * 0.72f), Offset(w * 0.5f, h * 0.92f), stroke, StrokeCap.Round)
+}
+
+fun DrawScope.drawLensGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    val w = size.width
+    val h = size.height
+    val arm = w * 0.28f
+    val inset = stroke / 2
+    for ((x, y) in listOf(inset to inset, w - inset to inset, inset to h - inset, w - inset to h - inset)) {
+        drawLine(color, Offset(x, y), Offset(x + if (x < w / 2) arm else -arm, y), stroke, StrokeCap.Round)
+        drawLine(color, Offset(x, y), Offset(x, y + if (y < h / 2) arm else -arm), stroke, StrokeCap.Round)
+    }
+    drawCircle(color, w * 0.16f, center)
 }
 
 private fun DrawScope.drawNarrowGlyph(color: Color) {
