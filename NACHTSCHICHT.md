@@ -15,11 +15,11 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 - [x] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
 - [x] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
 - [x] Nächster Wecker klein unter Datum/Wetter
-- [ ] Popups: sanfte Ausblend-Animation statt hartem Verschwinden
-- [ ] Gitter: leichter Vibrations-Tick, wenn beim Ziehen ein neuer Platz angesteuert wird
-- [ ] Mehr Unit-Tests (Buchstaben-Gruppierung, Icon-Stil-Speicherformat)
-- [ ] Einstellungen: Version anzeigen
-- [ ] versionName 2.0, Tag `v2.0`
+- [x] Popups: sanfte Ausblend-Animation statt hartem Verschwinden
+- [x] Gitter: leichter Vibrations-Tick, wenn beim Ziehen ein neuer Platz angesteuert wird
+- [x] Mehr Unit-Tests (Buchstaben-Gruppierung, Icon-Stil-Speicherformat)
+- [x] Einstellungen: Version anzeigen
+- [x] versionName 2.0, Tag `v2.0`
 
 ## Protokoll
 
@@ -57,3 +57,21 @@ lebten nur in dieser Sitzung und sind mit ihr verschwunden, deshalb ist danach n
 passiert. Am Morgen (09:59) habe ich die zuletzt halbfertige Wecker-Funktion geprüft: Build und
 Tests grün, committet. Das Handy war die ganze Nacht nicht per adb erreichbar, installiert
 ist also noch nichts von v2.0.
+
+**10:05–10:20 (gemeinsam am Morgen)** – Erste v2.0 aufs Handy gespielt, Einstellungen haben
+das Update überlebt. Danach der Rest:
+- Popups (Einstellungen, Icon ändern) blenden sanft aus und schrumpfen nach unten weg, statt
+  hart zu verschwinden.
+- Gitter: leichter Vibrations-Tick, sobald beim Ziehen ein neuer Platz angesteuert wird.
+- 8 neue Tests (Buchstaben-Gruppierung inkl. Umlaute, Speicherformat der Icon-Stile), 21
+  insgesamt, alle grün.
+- Einstellungen zeigen ganz unten „Fjell 2.0“.
+- versionName 2.0 / versionCode 2, aufs Handy gespielt, kein Absturz. Tag `v2.0`.
+
+## Zusammenfassung v2.0
+
+Neu gegenüber v1.0: Release-Build (flüssiger, 3,2 MB), Stapel mit „zuletzt“, Websuche und
+Ausblenden, nächster Wecker auf dem Startbildschirm, freie Plätze nach Deinstallation,
+sanftere Popups und Vibrations-Tick. Lens wurde entfernt, weil Google es für fremde Apps sperrt.
+Die Nachtschicht selbst brach um ~00:40 ab, weil die Claude-Sitzung endete. Der Rest wurde
+morgens gemeinsam fertiggestellt.
