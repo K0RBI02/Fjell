@@ -2,6 +2,7 @@ package dev.korbi.helgeland
 
 import android.content.SharedPreferences
 import androidx.annotation.DrawableRes
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
@@ -28,6 +29,9 @@ enum class Scene(
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
+
+/** The active scene, for parts (like popup sheets) that redraw the wallpaper themselves. */
+val LocalScene = staticCompositionLocalOf { Scene.Mountain }
 
 enum class SwipeDownAction(val label: String) {
     Notifications("Notifications"),

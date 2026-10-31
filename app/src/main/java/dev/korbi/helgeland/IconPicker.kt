@@ -22,6 +22,7 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,9 +35,11 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -49,6 +52,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -58,6 +62,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -71,14 +76,19 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 // Bluish white and near-black, pulled from the wallpaper's sky and mountain.
@@ -171,19 +181,24 @@ fun HelgelandPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
             .padding(top = 24.dp),
     ) {
         // As tall as the page needs (up to the top margin); the height glides between pages.
-        Column(
+        var sheetTop by remember { mutableFloatStateOf(0f) }
+        Box(
             Modifier
                 .fillMaxWidth()
                 .animateContentSize(tween(220))
                 .graphicsLayer { translationY = offset.value }
                 .clip(RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp))
-                .background(SheetColor)
-                // Swallow taps so they don't reach the dismiss layer behind.
-                .clickable(noRipple, null) {}
-                .nestedScroll(pullToClose)
-                .navigationBarsPadding()
-                .imePadding(),
+                .onGloballyPositioned { sheetTop = it.positionInRoot().y },
         ) {
+            FrostedBackdrop(sheetTop)
+            Column(
+                Modifier
+                    // Swallow taps so they don't reach the dismiss layer behind.
+                    .clickable(noRipple, null) {}
+                    .nestedScroll(pullToClose)
+                    .navigationBarsPadding()
+                    .imePadding(),
+            ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -198,8 +213,32 @@ fun HelgelandPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                 Box(Modifier.size(width = 40.dp, height = 4.dp).background(PopupText.copy(alpha = 0.45f), RoundedCornerShape(50)))
             }
             Box(Modifier.weight(1f, fill = false)) { content() }
+            }
         }
     }
+}
+
+/**
+ * Frosted glass for a sheet whose top edge sits [sheetTop] px below the window top: the
+ * scene drawn full-window, shifted so it lines up with the real wallpaper, then blurred
+ * and tinted like the stack. Only the part under the sheet shows.
+ */
+@Composable
+private fun BoxScope.FrostedBackdrop(sheetTop: Float) {
+    val window = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current
+    Image(
+        painter = painterResource(LocalScene.current.res),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .matchParentSize()
+            .wrapContentHeight(Alignment.Top, unbounded = true)
+            .requiredSize(with(density) { window.width.toDp() }, with(density) { window.height.toDp() })
+            .offset { IntOffset(0, -sheetTop.roundToInt()) }
+            .blur(24.dp),
+    )
+    Box(Modifier.matchParentSize().background(SheetColor))
 }
 
 /** Same tint the stack lays over the blurred wallpaper. */
