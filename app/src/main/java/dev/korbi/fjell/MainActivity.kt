@@ -286,6 +286,12 @@ class MainActivity : ComponentActivity() {
             if (after.notificationDots && !before.notificationDots && !MediaWatcher.hasAccess(this@MainActivity)) openMediaAccessSettings()
         }
 
+        override fun lockScreen() {
+            if (LockService.lock()) return
+            Toast.makeText(this@MainActivity, getString(R.string.toast_enable_lock), Toast.LENGTH_LONG).show()
+            startSafely(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
         override fun hasMediaAccess() = MediaWatcher.hasAccess(this@MainActivity)
 
         override fun openMediaAccessSettings() {
@@ -444,6 +450,7 @@ interface LauncherActions {
     fun openVoiceSearch()
     fun searchWeb(query: String)
     fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
+    fun lockScreen()
     fun hasMediaAccess(): Boolean
     fun openMediaAccessSettings()
     fun mediaPlayPause()

@@ -81,6 +81,7 @@ internal fun Home(
         DoubleTapAction.Search -> actions.openWebSearch()
         DoubleTapAction.Stapel -> openDrawer()
         DoubleTapAction.Settings -> openSettings()
+        DoubleTapAction.Lock -> actions.lockScreen()
     }
     val density = LocalDensity.current
     val threshold = with(density) { 72.dp.toPx() }
