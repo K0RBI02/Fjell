@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.SearchManager
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -21,6 +23,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.mutableIntStateOf
@@ -63,6 +66,10 @@ class MainActivity : ComponentActivity() {
     /** Bumped whenever icons may look different, so the UI re-renders them. */
     private val iconVersion = mutableIntStateOf(0)
     private var pendingIconApp: AppEntry? = null
+
+    private val contactsPermission: ActivityResultLauncher<String> = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (!granted) actions.updateSettings { it.copy(searchContacts = false) }
+    }
 
     private val pickPicture = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val app = pendingIconApp ?: return@registerForActivityResult
@@ -283,7 +290,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
             if (after.showWeather && !before.showWeather) refreshWeather(force = true)
+            if (after.searchContacts && !before.searchContacts && !Contacts.hasAccess(this@MainActivity)) {
+                contactsPermission.launch(Manifest.permission.READ_CONTACTS)
+            }
             if (after.notificationDots && !before.notificationDots && !MediaWatcher.hasAccess(this@MainActivity)) openMediaAccessSettings()
+        }
+
+        override suspend fun searchContacts(query: String) = Contacts.search(this@MainActivity, query)
+
+        override fun openContact(contact: ContactHit) {
+            startSafely(Intent(Intent.ACTION_VIEW, contact.uri))
+        }
+
+        override fun copyToClipboard(text: String) {
+            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(text, text))
+            Toast.makeText(this@MainActivity, getString(R.string.toast_copied, text), Toast.LENGTH_SHORT).show()
         }
 
         override fun lockScreen() {
@@ -325,11 +346,6 @@ class MainActivity : ComponentActivity() {
             val resized = GridSlots.resizeSearch(grid.value, span, GRID_COLUMNS)
             if (resized != null) setGrid(resized)
             else Toast.makeText(this@MainActivity, getString(R.string.toast_no_row_space), Toast.LENGTH_SHORT).show()
-        }
-
-        override fun openWebSearch() {
-            val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity")
-            if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
         }
 
         override fun searchWeb(query: String) {
@@ -421,7 +437,6 @@ class MainActivity : ComponentActivity() {
         const val GRID_SIZE = GRID_COLUMNS * 3
 
         const val STAPEL_KEY = GridSlots.STAPEL_KEY
-        private const val GOOGLE_APP = "com.google.android.googlequicksearchbox"
         const val WEATHER_MAX_AGE_MS = 30 * 60 * 1000L
     }
 }
@@ -446,10 +461,12 @@ interface LauncherActions {
 
     /** [span] is 2 or 4 slots. */
     fun setSearchWidth(span: Int)
-    fun openWebSearch()
     fun openVoiceSearch()
     fun searchWeb(query: String)
     fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
+    suspend fun searchContacts(query: String): List<ContactHit>
+    fun openContact(contact: ContactHit)
+    fun copyToClipboard(text: String)
     fun lockScreen()
     fun hasMediaAccess(): Boolean
     fun openMediaAccessSettings()

@@ -89,14 +89,19 @@ fun Launcher(
     actions: LauncherActions,
 ) {
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
+    var drawerSearch by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
     var iconPickerFor by remember { mutableStateOf<AppEntry?>(null) }
     LaunchedEffect(homePresses) {
         drawerOpen = false
+        drawerSearch = false
         settingsOpen = false
         iconPickerFor = null
     }
-    BackHandler(drawerOpen) { drawerOpen = false }
+    BackHandler(drawerOpen) {
+        drawerOpen = false
+        drawerSearch = false
+    }
     // Only the stack blurs the whole wallpaper; popups blur just what's behind their sheet.
     val overlayOpen = drawerOpen
 
@@ -131,6 +136,10 @@ fun Launcher(
                     settings = settings,
                     actions = actions,
                     onOpenDrawer = { drawerOpen = true },
+                    onOpenSearch = {
+                        drawerSearch = true
+                        drawerOpen = true
+                    },
                     onOpenSettings = { settingsOpen = true },
                     modifier = Modifier.alpha(homeAlpha),
                 )
@@ -148,7 +157,11 @@ fun Launcher(
                         hiddenKeys = hiddenKeys,
                         settings = settings,
                         actions = actions,
-                        onClose = { drawerOpen = false },
+                        focusSearch = drawerSearch,
+                        onClose = {
+                            drawerOpen = false
+                            drawerSearch = false
+                        },
                     )
                 }
             }

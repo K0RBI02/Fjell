@@ -93,6 +93,7 @@ internal fun AppGrid(
     dotPackages: Set<String>,
     noDots: Set<String>,
     onOpenDrawer: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val columns = MainActivity.GRID_COLUMNS
@@ -105,6 +106,7 @@ internal fun AppGrid(
     val opensSettings by rememberUpdatedState(stapelOpensSettings)
     val searchHasMic by rememberUpdatedState(searchMic)
     val openDrawer by rememberUpdatedState(onOpenDrawer)
+    val openSearch by rememberUpdatedState(onOpenSearch)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -192,7 +194,7 @@ internal fun AppGrid(
                                         GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
                                         // The mic owns a square at the bar's right end.
                                         is GridItem.Search ->
-                                            if (searchHasMic && down.position.x > size.width - size.height) actions.openVoiceSearch() else actions.openWebSearch()
+                                            if (searchHasMic && down.position.x > size.width - size.height) actions.openVoiceSearch() else openSearch()
                                         GridItem.Covered -> Unit
                                     }
                                     Press.Cancel -> Unit

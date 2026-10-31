@@ -69,16 +69,18 @@ internal fun Home(
     settings: LauncherSettings,
     actions: LauncherActions,
     onOpenDrawer: () -> Unit,
+    onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
+    val openSearch by rememberUpdatedState(onOpenSearch)
     val openSettings by rememberUpdatedState(onOpenSettings)
     val swipeDown by rememberUpdatedState(settings.swipeDown)
     val doubleTap by rememberUpdatedState(settings.doubleTap)
     fun run(action: DoubleTapAction) = when (action) {
         DoubleTapAction.Nothing -> Unit
-        DoubleTapAction.Search -> actions.openWebSearch()
+        DoubleTapAction.Search -> openSearch()
         DoubleTapAction.Stapel -> openDrawer()
         DoubleTapAction.Settings -> openSettings()
         DoubleTapAction.Lock -> actions.lockScreen()
@@ -116,7 +118,7 @@ internal fun Home(
                             dy < -threshold -> openDrawer()
                             dy > threshold -> when (swipeDown) {
                                 SwipeDownAction.Notifications -> actions.expandNotifications()
-                                SwipeDownAction.Search -> actions.openWebSearch()
+                                SwipeDownAction.Search -> openSearch()
                                 SwipeDownAction.Nothing -> Unit
                             }
                         }
@@ -184,6 +186,7 @@ internal fun Home(
                     dotPackages = dotPackages,
                     noDots = noDots,
                     onOpenDrawer = { openDrawer() },
+                    onOpenSearch = { openSearch() },
                     onOpenSettings = { openSettings() },
                 )
             }
