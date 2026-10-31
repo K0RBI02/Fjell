@@ -424,6 +424,14 @@ private fun AppGrid(
             return row * columns + col
         }
         val hover = dragFrom?.let { slotUnder(it, dragOffset) }
+        // A light tick each time the drag moves onto another slot.
+        var lastHover by remember { mutableStateOf<Int?>(null) }
+        LaunchedEffect(hover) {
+            if (hover != null && lastHover != null && hover != lastHover) {
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            }
+            lastHover = hover
+        }
 
         fun Modifier.atSlot(i: Int) = offset { IntOffset(((i % columns) * cellW).roundToInt(), ((i / columns) * cellH).roundToInt()) }
 
