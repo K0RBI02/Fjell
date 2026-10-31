@@ -45,6 +45,7 @@ enum class DoubleTapAction(@StringRes val label: Int) {
     Search(R.string.action_search),
     Stapel(R.string.action_stack),
     Settings(R.string.settings),
+    Lock(R.string.action_lock),
 }
 
 /** Every user-adjustable launcher option in one place. Grid layout and icons live elsewhere. */

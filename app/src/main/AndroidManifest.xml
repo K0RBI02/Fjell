@@ -52,7 +52,21 @@
             </intent-filter>
         </activity>
 
-        <!-- Only there so we may read media sessions for the "now playing" line. -->
+        <!-- Locks the screen on double tap; Android's only route for that. -->
+        <service
+            android:name=".LockService"
+            android:exported="false"
+            android:label="@string/lock_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/lock_service" />
+        </service>
+
+        <!-- Media sessions for the "now playing" line, and which apps get a notification dot. -->
         <service
             android:name=".MediaListener"
             android:exported="true"

@@ -105,4 +105,8 @@
     <string name="notification_dots_hint">on app icons in the grid · per app in its menu</string>
     <string name="menu_hide_dot">Hide notification dot</string>
     <string name="menu_show_dot">Show notification dot</string>
+    <string name="action_lock">Lock screen</string>
+    <string name="lock_service_label">Helgeland screen lock</string>
+    <string name="lock_service_description">Lets Helgeland lock the screen when you double-tap the home screen. It reads nothing on your screen and reacts to nothing else.</string>
+    <string name="toast_enable_lock">Switch on “Helgeland screen lock” to lock with a double tap</string>
 </resources>
