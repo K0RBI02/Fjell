@@ -76,7 +76,7 @@ fun Launcher(
     recentKeys: List<String>,
     launchCounts: Map<String, Int>,
     hiddenKeys: Set<String>,
-    temperature: Int?,
+    weather: WeatherNow?,
     nextAlarm: Long?,
     iconVersion: Int,
     globalIconStyle: IconStyle,
@@ -128,7 +128,7 @@ fun Launcher(
                 Home(
                     apps = apps,
                     gridKeys = gridKeys,
-                    temperature = temperature.takeIf { settings.showWeather },
+                    weather = weather.takeIf { settings.showWeather },
                     nextAlarm = nextAlarm.takeIf { settings.showAlarm },
                     nowPlaying = nowPlaying.takeIf { settings.media },
                     dotPackages = dotPackages,

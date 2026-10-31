@@ -16,16 +16,21 @@ import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
 
-/** Current temperature from Open-Meteo (free, no API key) at the phone's coarse location. */
+/** What the clock line shows of the weather. */
+enum class Sky { Clear, ClearNight, PartlyCloudy, Cloudy, Fog, Rain, Snow, Thunder }
+
+data class WeatherNow(val temperature: Int, val sky: Sky)
+
+/** Current weather from Open-Meteo (free, no API key) at the phone's coarse location. */
 object Weather {
     /** Callers must hold ACCESS_COARSE_LOCATION. Returns null on any failure. */
     @SuppressLint("MissingPermission")
-    suspend fun currentTemperature(context: Context): Int? = runCatching {
+    suspend fun current(context: Context): WeatherNow? = runCatching {
         val location = lastLocation(context) ?: return null
         val url = URL(
             String.format(
                 Locale.US,
-                "https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m",
+                "https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&current=temperature_2m,weather_code,is_day",
                 location.latitude,
                 location.longitude,
             ),
@@ -40,8 +45,24 @@ object Weather {
                 connection.disconnect()
             }
         }
-        JSONObject(body).getJSONObject("current").getDouble("temperature_2m").roundToInt()
+        val current = JSONObject(body).getJSONObject("current")
+        WeatherNow(
+            temperature = current.getDouble("temperature_2m").roundToInt(),
+            sky = skyFor(current.optInt("weather_code", 0), isDay = current.optInt("is_day", 1) == 1),
+        )
     }.getOrNull()
+
+    /** Maps a WMO weather code (as Open-Meteo reports it) to one of our glyphs. */
+    fun skyFor(code: Int, isDay: Boolean): Sky = when (code) {
+        0 -> if (isDay) Sky.Clear else Sky.ClearNight
+        1, 2 -> Sky.PartlyCloudy
+        3 -> Sky.Cloudy
+        45, 48 -> Sky.Fog
+        in 51..67, in 80..82 -> Sky.Rain
+        in 71..77, 85, 86 -> Sky.Snow
+        in 95..99 -> Sky.Thunder
+        else -> Sky.Cloudy
+    }
 
     @SuppressLint("MissingPermission")
     private suspend fun lastLocation(context: Context): Location? {

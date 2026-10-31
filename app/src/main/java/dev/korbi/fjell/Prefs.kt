@@ -66,9 +66,22 @@ class Prefs(context: Context) {
         sp.edit().apply { if (value == null) remove("icon:$appKey") else putString("icon:$appKey", value) }.apply()
     }
 
-    var lastTemperature: Int?
-        get() = if (sp.contains("temperature")) sp.getInt("temperature", 0) else null
-        set(value) = sp.edit().apply { if (value == null) remove("temperature") else putInt("temperature", value) }.apply()
+    /** The last weather fetched, shown right away on the next start. */
+    var lastWeather: WeatherNow?
+        get() {
+            if (!sp.contains("temperature")) return null
+            val sky = Sky.entries.firstOrNull { it.name == sp.getString("weatherSky", null) } ?: Sky.Cloudy
+            return WeatherNow(sp.getInt("temperature", 0), sky)
+        }
+        set(value) = sp.edit().apply {
+            if (value == null) {
+                remove("temperature")
+                remove("weatherSky")
+            } else {
+                putInt("temperature", value.temperature)
+                putString("weatherSky", value.sky.name)
+            }
+        }.apply()
 
     var askedForLocation: Boolean
         get() = sp.getBoolean("askedForLocation", false)
