@@ -84,6 +84,13 @@ object GridSlots {
         return (rows - 1 - used.last() - used.first()) / 2f
     }
 
+    /** How many rows lie between the first and last occupied row, inclusive; 0 for an empty grid. */
+    fun usedRowSpan(occupied: List<Boolean>, columns: Int): Int {
+        val rows = occupied.size / columns
+        val used = (0 until rows).filter { row -> (0 until columns).any { occupied[row * columns + it] } }
+        return if (used.isEmpty()) 0 else used.last() - used.first() + 1
+    }
+
     private fun List<String?>.fill(start: Int, span: Int): List<String?> = toMutableList().also {
         it[start] = SEARCH_KEY
         for (i in start + 1 until start + span) it[i] = COVERED

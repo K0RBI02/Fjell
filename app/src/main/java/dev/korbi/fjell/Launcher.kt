@@ -448,12 +448,22 @@ private fun AppGrid(
         val cellW = constraints.maxWidth / columns.toFloat()
         val cellH = constraints.maxHeight / rows.toFloat()
         val cellSize = DpSize(maxWidth / columns, maxHeight / rows)
-        val iconSize = minOf(48.dp, cellSize.height * 0.74f, cellSize.width * 0.74f)
+        // Fewer rows look lonely at the normal size, so they grow a little (not while dragging,
+        // when the full grid opens up again).
+        val occupied = slots.map { it != null }
+        val growth = when (GridSlots.usedRowSpan(occupied, columns)) {
+            2 -> 1.15f
+            1 -> 1.28f
+            else -> 1f
+        }
+        val iconScale by animateFloatAsState(if (dragFrom != null) 1f else growth, tween(220), label = "iconScale")
+        val maxIconSize = minOf(48.dp * 1.28f, cellSize.height * 0.92f, cellSize.width * 0.8f)
+        val iconSize = minOf(48.dp * iconScale, maxIconSize)
         val slotShape = RoundedCornerShape(36)
 
         // Fully empty rows at the top or bottom don't count: the rest is centred vertically,
         // in whole or half rows. While dragging, all rows open up so empty ones take drops.
-        val restShift = GridSlots.centeringShift(slots.map { it != null }, columns)
+        val restShift = GridSlots.centeringShift(occupied, columns)
         val shift by animateFloatAsState(if (dragFrom != null) 0f else restShift, tween(220), label = "gridShift")
         // Where the grid sat when the current drag began, to keep the dragged icon under the finger.
         var dragStartShift by remember { mutableFloatStateOf(0f) }
@@ -551,7 +561,7 @@ private fun AppGrid(
                 ) {
                     when (item) {
                         is GridItem.App -> {
-                            AppIcon(item.entry, iconSize, actions)
+                            AppIcon(item.entry, iconSize, actions, renderSize = maxIconSize)
                             AppMenu(menuSlot == i, onDismiss = { menuSlot = null }, app = item.entry, inGrid = true, actions = actions)
                         }
                         GridItem.Stapel -> {
@@ -1107,9 +1117,10 @@ private fun AppMenu(expanded: Boolean, onDismiss: () -> Unit, app: AppEntry, inG
     AppMenuPopup(app, inGrid, actions, onOpenIconPicker = { openIconPicker(app) }, onDismiss = onDismiss)
 }
 
+/** [renderSize] is the resolution the bitmap is drawn at; pass a fixed one when [size] animates. */
 @Composable
-fun AppIcon(app: AppEntry, size: Dp, actions: LauncherActions) {
-    val px = with(LocalDensity.current) { size.roundToPx() }
+fun AppIcon(app: AppEntry, size: Dp, actions: LauncherActions, renderSize: Dp = size) {
+    val px = with(LocalDensity.current) { renderSize.roundToPx() }
     val version = LocalIconVersion.current
     val bitmap by produceState<ImageBitmap?>(null, app.key, px, version) { value = actions.icon(app, px) }
     Box(Modifier.size(size)) {

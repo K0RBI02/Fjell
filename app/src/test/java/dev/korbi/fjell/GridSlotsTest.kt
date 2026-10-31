@@ -91,6 +91,14 @@ class GridSlotsTest {
     }
 
     @Test
+    fun `row span covers first to last used row`() {
+        assertEquals(3, GridSlots.usedRowSpan(rows(true, false, true), columns))
+        assertEquals(2, GridSlots.usedRowSpan(rows(false, true, true), columns))
+        assertEquals(1, GridSlots.usedRowSpan(rows(false, true, false), columns))
+        assertEquals(0, GridSlots.usedRowSpan(rows(false, false, false), columns))
+    }
+
+    @Test
     fun `widening keeps the start when the row has room`() {
         val slots = grid(SEARCH_KEY, COVERED, null, null)
         assertEquals(grid(SEARCH_KEY, COVERED, COVERED, COVERED), GridSlots.resizeSearch(slots, 4, columns))
