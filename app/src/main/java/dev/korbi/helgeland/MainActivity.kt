@@ -5,11 +5,13 @@ import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.SearchManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.Settings
@@ -50,8 +52,9 @@ class MainActivity : ComponentActivity() {
     private var weatherFetchedAt = 0L
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
     private val iconPacks = mutableStateOf<List<IconSource>>(emptyList())
-    private val stapelOpensSettings = mutableStateOf(false)
-    private val searchOptions = mutableStateOf(SearchBarOptions(mic = true))
+    private val settings = mutableStateOf(LauncherSettings())
+    private val nowPlaying = mutableStateOf<NowPlaying?>(null)
+    private val media by lazy { MediaWatcher(this) { nowPlaying.value = it } }
 
     /** Bumped whenever icons may look different, so the UI re-renders them. */
     private val iconVersion = mutableIntStateOf(0)
@@ -82,8 +85,7 @@ class MainActivity : ComponentActivity() {
         prefs = Prefs(this)
         icons = IconProvider(this, prefs)
         globalIconStyle.value = icons.globalStyle
-        stapelOpensSettings.value = prefs.stapelOpensSettings
-        searchOptions.value = SearchBarOptions(mic = prefs.searchMic)
+        settings.value = prefs.settings
         grid.value = prefs.grid
         recent.value = prefs.recent
         hidden.value = prefs.hidden
@@ -115,8 +117,8 @@ class MainActivity : ComponentActivity() {
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
-                stapelOpensSettings = stapelOpensSettings.value,
-                searchOptions = searchOptions.value,
+                settings = settings.value,
+                nowPlaying = nowPlaying.value,
                 homePresses = homePresses.intValue,
                 actions = actions,
             )
@@ -132,6 +134,13 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         refreshWeather()
         refreshNextAlarm()
+        // Restarted on every return, so a freshly granted notification access takes effect right away.
+        if (settings.value.media) media.start()
+    }
+
+    override fun onPause() {
+        media.stop()
+        super.onPause()
     }
 
     private fun refreshNextAlarm() {
@@ -141,7 +150,7 @@ class MainActivity : ComponentActivity() {
     private fun refreshWeather(force: Boolean = false) {
         val granted = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val stale = System.currentTimeMillis() - weatherFetchedAt > WEATHER_MAX_AGE_MS
-        if (!granted || !(force || stale)) return
+        if (!settings.value.showWeather || !granted || !(force || stale)) return
         weatherFetchedAt = System.currentTimeMillis()
         lifecycleScope.launch {
             val temp = Weather.currentTemperature(this@MainActivity) ?: return@launch
@@ -244,10 +253,42 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        override fun setStapelOpensSettings(opensSettings: Boolean) {
-            prefs.stapelOpensSettings = opensSettings
-            stapelOpensSettings.value = opensSettings
+        override fun updateSettings(change: (LauncherSettings) -> LauncherSettings) {
+            val before = settings.value
+            val after = change(before)
+            settings.value = after
+            prefs.settings = after
+            if (after.media != before.media) {
+                if (after.media) {
+                    if (!MediaWatcher.hasAccess(this@MainActivity)) openMediaAccessSettings()
+                    media.start()
+                } else {
+                    media.stop()
+                }
+            }
+            if (after.showWeather && !before.showWeather) refreshWeather(force = true)
         }
+
+        override fun hasMediaAccess() = MediaWatcher.hasAccess(this@MainActivity)
+
+        override fun openMediaAccessSettings() {
+            // Android 11+ can jump straight to our switch; older versions show the full list.
+            val detail = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, ComponentName(this@MainActivity, MediaListener::class.java).flattenToString())
+            } else {
+                null
+            }
+            if (detail == null || !startSafely(detail)) startSafely(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+
+        override fun mediaPlayPause() = media.playPause()
+
+        override fun mediaNext() = media.next()
+
+        override fun mediaPrevious() = media.previous()
+
+        override fun mediaOpen() = media.open()
 
         override fun moveInGrid(from: Int, to: Int) {
             setGrid(GridSlots.move(grid.value, from, to, GRID_COLUMNS))
@@ -268,11 +309,6 @@ class MainActivity : ComponentActivity() {
         override fun openWebSearch() {
             val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity")
             if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
-        }
-
-        override fun setSearchMic(shown: Boolean) {
-            prefs.searchMic = shown
-            searchOptions.value = searchOptions.value.copy(mic = shown)
         }
 
         override fun searchWeb(query: String) {
@@ -385,8 +421,13 @@ interface LauncherActions {
     fun openWebSearch()
     fun openVoiceSearch()
     fun searchWeb(query: String)
-    fun setSearchMic(shown: Boolean)
-    fun setStapelOpensSettings(opensSettings: Boolean)
+    fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
+    fun hasMediaAccess(): Boolean
+    fun openMediaAccessSettings()
+    fun mediaPlayPause()
+    fun mediaNext()
+    fun mediaPrevious()
+    fun mediaOpen()
     fun openClock()
     fun openCalendar()
     fun expandNotifications()

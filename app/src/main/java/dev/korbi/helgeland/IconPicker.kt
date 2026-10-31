@@ -57,11 +57,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -70,23 +68,23 @@ import androidx.compose.ui.unit.sp
 // Bluish white and near-black, pulled from the wallpaper's sky and mountain.
 val PopupColor = Color(0xF5EDF0F5)
 val Ink = Color(0xFF1A1F2B)
-private val Card = Color.White.copy(alpha = 0.55f)
-private val Night = Color(0xFF1C2233)
-private val Mountain = Color(0xFF536A92)
-private val Cream = Color(0xFFE8E2D0)
-private val Muted = Ink.copy(alpha = 0.55f)
-private val rowStyle = TextStyle(fontFamily = Lato, fontSize = 17.sp, color = Ink)
-private val hintStyle = TextStyle(fontFamily = Lato, fontSize = 13.sp, color = Muted)
+internal val Card = Color.White.copy(alpha = 0.55f)
+internal val Night = Color(0xFF1C2233)
+internal val Mountain = Color(0xFF536A92)
+internal val Cream = Color(0xFFE8E2D0)
+internal val Muted = Ink.copy(alpha = 0.55f)
+internal val rowStyle = TextStyle(fontFamily = Lato, fontSize = 17.sp, color = Ink)
+internal val hintStyle = TextStyle(fontFamily = Lato, fontSize = 13.sp, color = Muted)
 
 /** Captions for the bubble row in the settings. */
-private val SHORT_LABELS = mapOf(
+internal val SHORT_LABELS = mapOf(
     IconStyle.Original to "Original",
     IconStyle.Grayscale to "Grau",
     IconStyle.Mono to "Einfach",
 )
 
 /** The styles everyone can pick, in display order, with a one-line explanation each. */
-private val BUILT_IN_STYLES = listOf(
+internal val BUILT_IN_STYLES = listOf(
     Triple(IconStyle.Original, "Original", "das bunte App-Icon mit Rand in der Bubble"),
     Triple(IconStyle.Grayscale, "Original schwarz-weiß", "das App-Icon entsättigt"),
     Triple(IconStyle.Mono, "Einfaches App-Icon", "das schlichte Icon, das viele Apps mitliefern"),
@@ -142,126 +140,6 @@ fun PopupTransition(visible: Boolean, content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** Launcher settings: the default icon style and the 3x3 button. */
-@Composable
-fun SettingsPopup(
-    sampleApp: AppEntry?,
-    globalStyle: IconStyle,
-    iconPacks: List<IconSource>,
-    stapelShown: Boolean,
-    stapelOpensSettings: Boolean,
-    searchShown: Boolean,
-    searchOptions: SearchBarOptions,
-    hiddenApps: List<AppEntry>,
-    actions: LauncherActions,
-    onDismiss: () -> Unit,
-) {
-    BackHandler(onBack = onDismiss)
-    HelgelandPopup(onDismiss) {
-        Column(Modifier.fillMaxSize()) {
-            PopupHeader("Einstellungen")
-            LazyColumn(
-                contentPadding = PaddingValues(vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                item { HandTitle("Icons", Modifier.padding(horizontal = 22.dp)) }
-                item {
-                    val choices = BUILT_IN_STYLES.map { (style) -> style to SHORT_LABELS.getValue(style) } +
-                        iconPacks.map { IconStyle.Pack(it.pkg) to it.label.removeSuffix(" Icons").removeSuffix(" Icon Pack") }
-                    // Equal columns, four to a row, so every choice is fully visible.
-                    Column(Modifier.padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        choices.chunked(4).forEach { row ->
-                            Row(Modifier.fillMaxWidth()) {
-                                row.forEach { (style, label) ->
-                                    BubbleChoice(
-                                        label = label,
-                                        selected = style == globalStyle,
-                                        onClick = { actions.setGlobalIconStyle(style) },
-                                        modifier = Modifier.weight(1f),
-                                    ) {
-                                        if (sampleApp != null) StylePreview(sampleApp, style, actions, size = 54.dp)
-                                    }
-                                }
-                                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-                            }
-                        }
-                    }
-                }
-                item { HandTitle("3×3-Knopf", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
-                item {
-                    ToggleRow(
-                        label = "auf dem Startbildschirm",
-                        hint = when {
-                            !stapelShown -> "aus"
-                            stapelOpensSettings -> "öffnet die Einstellungen"
-                            else -> "öffnet den Stapel"
-                        },
-                        on = stapelShown,
-                        onToggle = { actions.setStapelShown(!stapelShown) },
-                    ) { StapelIcon(44.dp) }
-                }
-                item { HandTitle("Suchleiste", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
-                item {
-                    ToggleRow(
-                        label = "auf dem Startbildschirm",
-                        hint = if (searchShown) "gedrückt halten für die Breite" else "aus",
-                        on = searchShown,
-                        onToggle = { actions.setSearchShown(!searchShown) },
-                    ) { GlyphBubble { SearchGlyph(Ink) } }
-                }
-                item {
-                    ToggleRow(label = "Mikrofon", on = searchOptions.mic, onToggle = { actions.setSearchMic(!searchOptions.mic) }) {
-                        GlyphBubble { MicGlyph(Ink) }
-                    }
-                }
-                if (hiddenApps.isNotEmpty()) {
-                    item { HandTitle("Ausgeblendet", Modifier.padding(start = 22.dp, end = 22.dp, top = 10.dp)) }
-                    items(hiddenApps.size) { i ->
-                        val app = hiddenApps[i]
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { actions.setHidden(app, false) }
-                                .padding(horizontal = 22.dp, vertical = 6.dp),
-                        ) {
-                            AppIcon(app, 44.dp, actions)
-                            Spacer(Modifier.width(16.dp))
-                            Text(app.label, style = rowStyle, modifier = Modifier.weight(1f))
-                            Text("einblenden", style = hintStyle)
-                        }
-                    }
-                }
-                item {
-                    Text(
-                        "Als Standard-Launcher festlegen",
-                        maxLines = 1,
-                        textAlign = TextAlign.Center,
-                        style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = Cream),
-                        modifier = Modifier
-                            .padding(start = 22.dp, end = 22.dp, top = 18.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(50))
-                            .background(Night)
-                            .clickable(onClick = actions::openHomeSettings)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    )
-                }
-                item {
-                    val context = LocalContext.current
-                    val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
-                    Text(
-                        "Helgeland $version",
-                        textAlign = TextAlign.Center,
-                        style = TextStyle(fontFamily = IndieFlower, fontSize = 15.sp, color = Muted),
-                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
 /** Hand-written popup title, with an optional ‹ to go back. */
 @Composable
 fun PopupHeader(title: String, onBack: (() -> Unit)? = null) {
@@ -288,13 +166,13 @@ fun PopupHeader(title: String, onBack: (() -> Unit)? = null) {
 }
 
 @Composable
-private fun HandTitle(text: String, modifier: Modifier = Modifier) {
+internal fun HandTitle(text: String, modifier: Modifier = Modifier) {
     Text(text, style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink), modifier = modifier)
 }
 
 /** A preview bubble with a hand-written caption; the chosen one gets a ring. */
 @Composable
-private fun BubbleChoice(
+internal fun BubbleChoice(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -326,7 +204,7 @@ private fun BubbleChoice(
 
 /** A settings row: leading bubble, label with optional hint, switch at the end. */
 @Composable
-private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit, hint: String? = null, leading: @Composable () -> Unit) {
+internal fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit, hint: String? = null, leading: @Composable () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -345,13 +223,13 @@ private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit, hint: St
 }
 
 @Composable
-private fun GlyphBubble(glyph: @Composable () -> Unit) {
+internal fun GlyphBubble(glyph: @Composable () -> Unit) {
     Box(Modifier.size(44.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) { glyph() }
 }
 
 /** On/off switch: mountain-blue track when on, a white bubble knob that glides across. */
 @Composable
-private fun BubbleSwitch(on: Boolean) {
+internal fun BubbleSwitch(on: Boolean) {
     val progress by animateFloatAsState(if (on) 1f else 0f, tween(200), label = "switch")
     val track = lerp(Ink.copy(alpha = 0.14f), Mountain, progress)
     Box(
@@ -549,12 +427,12 @@ private fun PackBrowser(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(text, style = TextStyle(fontFamily = Lato, fontSize = 15.sp, color = Muted), modifier = Modifier.padding(top = 14.dp, start = 4.dp))
 }
 
 @Composable
-private fun StyleCard(
+internal fun StyleCard(
     label: String,
     onClick: () -> Unit,
     hint: String? = null,
@@ -585,7 +463,7 @@ private fun StyleCard(
 }
 
 @Composable
-private fun StylePreview(app: AppEntry, style: IconStyle, actions: LauncherActions, size: Dp = 44.dp) {
+internal fun StylePreview(app: AppEntry, style: IconStyle, actions: LauncherActions, size: Dp = 44.dp) {
     val px = with(LocalDensity.current) { size.roundToPx() }
     val bitmap by produceState<ImageBitmap?>(null, app.key, style, px) { value = actions.previewIcon(app, style, px) }
     bitmap?.let { Image(it, contentDescription = null, modifier = Modifier.size(size)) }

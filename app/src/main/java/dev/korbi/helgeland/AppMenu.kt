@@ -156,8 +156,8 @@ fun StapelMenuPopup(
             Text("3×3-Knopf", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
         }
         MenuDivider()
-        MenuRow("Öffnet den Stapel", glyph = DrawScope::drawListGlyph, checked = !opensSettings) { actions.setStapelOpensSettings(false) }
-        MenuRow("Öffnet die Einstellungen", glyph = DrawScope::drawGearGlyph, checked = opensSettings) { actions.setStapelOpensSettings(true) }
+        MenuRow("Öffnet den Stapel", glyph = DrawScope::drawListGlyph, checked = !opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = false) } }
+        MenuRow("Öffnet die Einstellungen", glyph = DrawScope::drawGearGlyph, checked = opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = true) } }
         MenuDivider()
         MenuRow("Einstellungen", glyph = DrawScope::drawGearGlyph) { dismissThen(onOpenSettings) }
         MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setStapelShown(false) } }
@@ -166,7 +166,7 @@ fun StapelMenuPopup(
 
 /** Long-press menu for the search bar: its width, and taking it off the grid. */
 @Composable
-fun SearchMenuPopup(span: Int, options: SearchBarOptions, actions: LauncherActions, onDismiss: () -> Unit) {
+fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss: () -> Unit) {
     val dismissThen = { action: () -> Unit -> onDismiss(); action() }
     MenuCard(onDismiss) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -180,7 +180,7 @@ fun SearchMenuPopup(span: Int, options: SearchBarOptions, actions: LauncherActio
         MenuRow("2 Plätze breit", glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
         MenuRow("4 Plätze breit", glyph = DrawScope::drawWideGlyph, checked = span == 4) { dismissThen { actions.setSearchWidth(4) } }
         MenuDivider()
-        MenuRow("Mikrofon", glyph = DrawScope::drawMicGlyph, checked = options.mic) { actions.setSearchMic(!options.mic) }
+        MenuRow("Mikrofon", glyph = DrawScope::drawMicGlyph, checked = mic) { actions.updateSettings { it.copy(searchMic = !mic) } }
         MenuDivider()
         MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
     }
@@ -286,7 +286,7 @@ private fun DrawScope.drawWideGlyph(color: Color) {
     drawRoundRect(color, Offset(stroke / 2, size.height * 0.32f), Size(size.width - stroke, size.height * 0.36f), CornerRadius(size.height * 0.18f), style = Stroke(stroke))
 }
 
-private fun DrawScope.drawListGlyph(color: Color) {
+internal fun DrawScope.drawListGlyph(color: Color) {
     val stroke = size.minDimension * 0.1f
     for (row in 0..2) {
         val y = size.height * (0.2f + row * 0.3f)
@@ -295,7 +295,7 @@ private fun DrawScope.drawListGlyph(color: Color) {
     }
 }
 
-private fun DrawScope.drawGearGlyph(color: Color) {
+internal fun DrawScope.drawGearGlyph(color: Color) {
     val stroke = size.minDimension * 0.1f
     val outer = size.minDimension * 0.46f
     val inner = size.minDimension * 0.3f
@@ -308,13 +308,13 @@ private fun DrawScope.drawGearGlyph(color: Color) {
     drawCircle(color, size.minDimension * 0.1f, center, style = Stroke(stroke))
 }
 
-private fun DrawScope.drawGridGlyph(color: Color) {
+internal fun DrawScope.drawGridGlyph(color: Color) {
     val step = size.minDimension * 0.36f
     val radius = size.minDimension * 0.08f
     for (row in -1..1) for (col in -1..1) drawCircle(color, radius, center + Offset(col * step, row * step))
 }
 
-private fun DrawScope.drawIconGlyph(color: Color) {
+internal fun DrawScope.drawIconGlyph(color: Color) {
     val stroke = size.minDimension * 0.1f
     val inset = stroke / 2
     drawRoundRect(color, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), CornerRadius(size.minDimension * 0.34f), style = Stroke(stroke))
