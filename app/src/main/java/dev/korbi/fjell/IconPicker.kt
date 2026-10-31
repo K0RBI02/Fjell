@@ -79,15 +79,15 @@ internal val hintStyle = TextStyle(fontFamily = Lato, fontSize = 13.sp, color = 
 /** Captions for the bubble row in the settings. */
 internal val SHORT_LABELS = mapOf(
     IconStyle.Original to "Original",
-    IconStyle.Grayscale to "Grau",
-    IconStyle.Mono to "Einfach",
+    IconStyle.Grayscale to "Gray",
+    IconStyle.Mono to "Simple",
 )
 
 /** The styles everyone can pick, in display order, with a one-line explanation each. */
 internal val BUILT_IN_STYLES = listOf(
-    Triple(IconStyle.Original, "Original", "das bunte App-Icon mit Rand in der Bubble"),
-    Triple(IconStyle.Grayscale, "Original schwarz-weiß", "das App-Icon entsättigt"),
-    Triple(IconStyle.Mono, "Einfaches App-Icon", "das schlichte Icon, das viele Apps mitliefern"),
+    Triple(IconStyle.Original, "Original", "the colourful app icon, framed in the bubble"),
+    Triple(IconStyle.Grayscale, "Original grayscale", "the app icon, desaturated"),
+    Triple(IconStyle.Mono, "Simple app icon", "the plain icon many apps ship with"),
 )
 
 /**
@@ -278,15 +278,15 @@ fun IconPickerPopup(
             return@FjellPopup
         }
         Column(Modifier.fillMaxSize()) {
-            PopupHeader("Icon von ${app.label}")
+            PopupHeader("Icon for ${app.label}")
             LazyColumn(
                 contentPadding = PaddingValues(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
                     StyleCard(
-                        label = "Standard",
-                        hint = "wie in den Einstellungen",
+                        label = "Default",
+                        hint = "as set in settings",
                         selected = current == null,
                         preview = { StylePreview(app, globalStyle, actions) },
                         onClick = { actions.setAppIconStyle(app, null); onClose() },
@@ -302,8 +302,8 @@ fun IconPickerPopup(
                 )
                 item {
                     StyleCard(
-                        label = "Eigenes Bild",
-                        hint = "aus der Galerie wählen",
+                        label = "Own picture",
+                        hint = "pick from the gallery",
                         selected = current == IconStyle.Custom,
                         preview = if (current == IconStyle.Custom) ({ StylePreview(app, IconStyle.Custom, actions) }) else null,
                         onClick = { actions.pickCustomIcon(app); onClose() },
@@ -326,7 +326,7 @@ private fun LazyListScope.styleRows(
     onSelect: (IconStyle) -> Unit,
     onOpenPack: ((String) -> Unit)?,
 ) {
-    item { SectionTitle("Stile") }
+    item { SectionTitle("Styles") }
     BUILT_IN_STYLES.forEach { (style, label, hint) ->
         item {
             StyleCard(
@@ -339,13 +339,13 @@ private fun LazyListScope.styleRows(
         }
     }
     if (iconPacks.isNotEmpty()) {
-        item { SectionTitle("Installierte Icon Packs") }
+        item { SectionTitle("Installed icon packs") }
         iconPacks.forEach { pack ->
             val style = IconStyle.Pack(pack.pkg)
             item {
                 StyleCard(
                     label = pack.label,
-                    hint = if (onOpenPack != null) "Icon aus dem Pack aussuchen" else "passendes Icon automatisch",
+                    hint = if (onOpenPack != null) "pick an icon from the pack" else "matching icon, automatically",
                     selected = selected == style || (selected as? IconStyle.PackIcon)?.pkg == pack.pkg,
                     chevron = onOpenPack != null,
                     preview = app?.let { { StylePreview(it, style, actions) } },
@@ -356,7 +356,7 @@ private fun LazyListScope.styleRows(
     }
 }
 
-/** Every icon in one pack, searchable; "Automatisch" keeps the pack's own match. */
+/** Every icon in one pack, searchable; "Automatic" keeps the pack's own match. */
 @Composable
 private fun PackBrowser(
     app: AppEntry,
@@ -387,7 +387,7 @@ private fun PackBrowser(
                 .background(Card, RoundedCornerShape(50))
                 .padding(horizontal = 22.dp, vertical = 14.dp),
             decorationBox = { field ->
-                if (query.isEmpty()) Text("Icon suchen", style = rowStyle.copy(color = Muted))
+                if (query.isEmpty()) Text("Search icons", style = rowStyle.copy(color = Muted))
                 field()
             },
         )
@@ -399,15 +399,15 @@ private fun PackBrowser(
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 StyleCard(
-                    label = "Automatisch",
-                    hint = "das Icon, das ${pack.label} für ${app.label} vorsieht",
+                    label = "Automatic",
+                    hint = "the icon ${pack.label} provides for ${app.label}",
                     selected = current == IconStyle.Pack(pack.pkg),
                     preview = { StylePreview(app, IconStyle.Pack(pack.pkg), actions) },
                     onClick = { onPick(IconStyle.Pack(pack.pkg)) },
                 )
             }
             if (names == null) {
-                item(span = { GridItemSpan(maxLineSpan) }) { Text("lädt …", style = hintStyle, modifier = Modifier.padding(8.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Text("loading …", style = hintStyle, modifier = Modifier.padding(8.dp)) }
             }
             items(filtered, key = { it }) { name ->
                 val style = IconStyle.PackIcon(pack.pkg, name)

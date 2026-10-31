@@ -126,16 +126,16 @@ fun AppMenuPopup(
             EditableName(app, onRename = { label -> dismissThen { actions.rename(app, label) } })
         }
         MenuDivider()
-        MenuRow(if (inGrid) "In den Stapel" else "Auf den Startbildschirm", glyph = DrawScope::drawGridGlyph) { dismissThen { actions.toggleGrid(app) } }
-        MenuRow("Icon ändern", glyph = DrawScope::drawIconGlyph) { dismissThen(onOpenIconPicker) }
+        MenuRow(if (inGrid) "Move to stack" else "Add to home screen", glyph = DrawScope::drawGridGlyph) { dismissThen { actions.toggleGrid(app) } }
+        MenuRow("Change icon", glyph = DrawScope::drawIconGlyph) { dismissThen(onOpenIconPicker) }
         if (!inGrid) {
             val hidden = actions.isHidden(app)
-            MenuRow(if (hidden) "Wieder im Stapel zeigen" else "Im Stapel ausblenden", glyph = DrawScope::drawHideGlyph) {
+            MenuRow(if (hidden) "Show in stack again" else "Hide from stack", glyph = DrawScope::drawHideGlyph) {
                 dismissThen { actions.setHidden(app, !hidden) }
             }
         }
-        MenuRow("App-Info", glyph = DrawScope::drawInfoGlyph) { dismissThen { actions.appInfo(app) } }
-        MenuRow("Deinstallieren", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.uninstall(app) } }
+        MenuRow("App info", glyph = DrawScope::drawInfoGlyph) { dismissThen { actions.appInfo(app) } }
+        MenuRow("Uninstall", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.uninstall(app) } }
     }
 }
 
@@ -153,14 +153,14 @@ fun StapelMenuPopup(
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             StapelIcon(minOf(iconSize, 36.dp))
             Spacer(Modifier.width(12.dp))
-            Text("3×3-Knopf", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
+            Text("3×3 button", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
         }
         MenuDivider()
-        MenuRow("Öffnet den Stapel", glyph = DrawScope::drawListGlyph, checked = !opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = false) } }
-        MenuRow("Öffnet die Einstellungen", glyph = DrawScope::drawGearGlyph, checked = opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = true) } }
+        MenuRow("Opens the stack", glyph = DrawScope::drawListGlyph, checked = !opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = false) } }
+        MenuRow("Opens settings", glyph = DrawScope::drawGearGlyph, checked = opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = true) } }
         MenuDivider()
-        MenuRow("Einstellungen", glyph = DrawScope::drawGearGlyph) { dismissThen(onOpenSettings) }
-        MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setStapelShown(false) } }
+        MenuRow("Settings", glyph = DrawScope::drawGearGlyph) { dismissThen(onOpenSettings) }
+        MenuRow("Remove from home screen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setStapelShown(false) } }
     }
 }
 
@@ -174,15 +174,15 @@ fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss
                 SearchGlyph(Ink)
             }
             Spacer(Modifier.width(12.dp))
-            Text("Suchleiste", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
+            Text("Search bar", style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
         }
         MenuDivider()
-        MenuRow("2 Plätze breit", glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
-        MenuRow("4 Plätze breit", glyph = DrawScope::drawWideGlyph, checked = span == 4) { dismissThen { actions.setSearchWidth(4) } }
+        MenuRow("2 slots wide", glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
+        MenuRow("4 slots wide", glyph = DrawScope::drawWideGlyph, checked = span == 4) { dismissThen { actions.setSearchWidth(4) } }
         MenuDivider()
-        MenuRow("Mikrofon", glyph = DrawScope::drawMicGlyph, checked = mic) { actions.updateSettings { it.copy(searchMic = !mic) } }
+        MenuRow("Microphone", glyph = DrawScope::drawMicGlyph, checked = mic) { actions.updateSettings { it.copy(searchMic = !mic) } }
         MenuDivider()
-        MenuRow("Vom Startbildschirm entfernen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
+        MenuRow("Remove from home screen", color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
     }
 }
 

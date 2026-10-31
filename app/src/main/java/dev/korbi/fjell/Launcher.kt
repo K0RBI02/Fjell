@@ -383,7 +383,7 @@ private fun Home(
         ) {
             if (slots.all { it == null }) {
                 Text(
-                    "hochwischen · app gedrückt halten → zum startbildschirm",
+                    "swipe up · hold an app → add to home screen",
                     style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = Color.White, shadow = softShadow),
                 )
             } else {
@@ -676,14 +676,14 @@ private fun SearchBar(mic: Boolean, modifier: Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .background(bubble, RoundedCornerShape(36))
-            .semantics { contentDescription = "Suche" },
+            .semantics { contentDescription = "Search" },
     ) {
         Spacer(Modifier.width(12.dp))
         SearchGlyph(glyph)
         Spacer(Modifier.width(8.dp))
-        Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
+        Text("search", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
         if (mic) {
-            // Drawn narrower than the bar is tall so "suchen" still fits on a 2-wide bar;
+            // Drawn narrower than the bar is tall so the "search" hint still fits on a 2-wide bar;
             // the tap handler gives the mic a full square, which covers this box.
             Box(Modifier.fillMaxHeight().width(38.dp), contentAlignment = Alignment.Center) { MicGlyph(glyph) }
         } else {
@@ -708,7 +708,7 @@ fun StapelIcon(size: Dp) {
         Modifier
             .size(size)
             .background(bubble, RoundedCornerShape(36))
-            .semantics { contentDescription = "Alle Apps" },
+            .semantics { contentDescription = "All apps" },
     ) {
         val step = this.size.minDimension * 0.18f
         val radius = this.size.minDimension * 0.045f
@@ -731,7 +731,7 @@ private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Lo
     }
     val timePattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
     val time = now.format(DateTimeFormatter.ofPattern(timePattern))
-    val date = now.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
+    val date = now.format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
     val subline = if (temperature != null) "$date | $temperature°C" else date
     // Only alarms within the next day are worth a glance on the home screen.
     val alarm = nextAlarm
@@ -855,7 +855,7 @@ private fun Drawer(
     // Where each letter starts in the list, for the alphabet strip. Without visible headers
     // that's simply the letter's first app.
     val headerIndex = remember(sections, recentApps.isEmpty(), showHeaders) {
-        // The "zuletzt" header and row sit above the first letter.
+        // The "recent" header and row sit above the first letter.
         var index = if (recentApps.isEmpty()) 0 else 2
         sections.orEmpty().mapValues { (_, group) -> index.also { index += group.size + if (showHeaders) 1 else 0 } }
     }
@@ -904,7 +904,7 @@ private fun Drawer(
                     Spacer(Modifier.width(14.dp))
                     Box {
                         if (query.isEmpty()) {
-                            Text("suchen", style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.55f)))
+                            Text("search", style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.55f)))
                         }
                         field()
                     }
@@ -947,7 +947,7 @@ private fun Drawer(
                     }
                 } else {
                     if (recentApps.isNotEmpty()) {
-                        item(key = "recent:header") { SectionHeader("zuletzt") }
+                        item(key = "recent:header") { SectionHeader("recent") }
                         item(key = "recent:row") { RecentRow(recentApps, actions, onLaunch = launchAndClose) }
                     }
                     sections.forEach { (letter, group) ->
@@ -1009,7 +1009,7 @@ private fun WebSearchRow(query: String, onClick: () -> Unit) {
         }
         Spacer(Modifier.width(18.dp))
         Text(
-            "Im Web suchen: „$query“",
+            "Search the web: “$query”",
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.85f)),

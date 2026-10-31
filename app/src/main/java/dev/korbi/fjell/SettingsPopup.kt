@@ -42,12 +42,12 @@ import androidx.compose.ui.unit.sp
 
 /** The settings popup's pages: an overview of categories, then one page per category. */
 private enum class SettingsPage(val title: String, val hint: String, val glyph: DrawScope.(Color) -> Unit) {
-    Home("Startbildschirm", "Hintergrund, 3×3-Knopf, Suchleiste, Media", DrawScope::drawGridGlyph),
-    Clock("Uhr & Wetter", "Größe, Wetter, Wecker", DrawScope::drawBellGlyph),
-    Stapel("Stapel", "zuletzt, Alphabet, ausgeblendete Apps", DrawScope::drawListGlyph),
-    Icons("Icons", "Stil für alle Apps", DrawScope::drawIconGlyph),
-    Gestures("Gesten", "Runterwischen, Doppeltippen", DrawScope::drawSwipeGlyph),
-    General("Allgemein", "Vibration, Standard-Launcher", DrawScope::drawGearGlyph),
+    Home("Home screen", "wallpaper, 3×3 button, search bar, media", DrawScope::drawGridGlyph),
+    Clock("Clock & weather", "size, weather, alarm", DrawScope::drawBellGlyph),
+    Stapel("Stack", "recent, alphabet, hidden apps", DrawScope::drawListGlyph),
+    Icons("Icons", "style for all apps", DrawScope::drawIconGlyph),
+    Gestures("Gestures", "swipe down, double tap", DrawScope::drawSwipeGlyph),
+    General("General", "vibration, default launcher", DrawScope::drawGearGlyph),
 }
 
 @Composable
@@ -69,7 +69,7 @@ fun SettingsPopup(
     FjellPopup(onDismiss) {
         Column(Modifier.fillMaxSize()) {
             val current = page
-            PopupHeader(current?.title ?: "Einstellungen", onBack = if (current != null) ({ page = null }) else null)
+            PopupHeader(current?.title ?: "Settings", onBack = if (current != null) ({ page = null }) else null)
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -113,7 +113,7 @@ private fun LazyListScope.overview(onOpen: (SettingsPage) -> Unit) {
 }
 
 private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Boolean, searchShown: Boolean, actions: LauncherActions, update: Update) {
-    item { HandTitle("Hintergrund", Modifier.padding(horizontal = 22.dp)) }
+    item { HandTitle("Wallpaper", Modifier.padding(horizontal = 22.dp)) }
     item {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
             Scene.entries.forEach { scene ->
@@ -134,14 +134,14 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
             }
         }
     }
-    item { HandTitle("Auf dem Startbildschirm", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
+    item { HandTitle("On the home screen", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     item {
         ToggleRow(
-            label = "3×3-Knopf",
+            label = "3×3 button",
             hint = when {
-                !stapelShown -> "aus · hochwischen öffnet den Stapel"
-                settings.stapelOpensSettings -> "öffnet die Einstellungen · gedrückt halten zum Ändern"
-                else -> "öffnet den Stapel · gedrückt halten zum Ändern"
+                !stapelShown -> "off · swipe up opens the stack"
+                settings.stapelOpensSettings -> "opens settings · hold it to change"
+                else -> "opens the stack · hold it to change"
             },
             on = stapelShown,
             onToggle = { actions.setStapelShown(!stapelShown) },
@@ -149,15 +149,15 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
     }
     item {
         ToggleRow(
-            label = "Suchleiste",
-            hint = if (searchShown) "gedrückt halten für die Breite" else "aus",
+            label = "Search bar",
+            hint = if (searchShown) "hold it to change the width" else "off",
             on = searchShown,
             onToggle = { actions.setSearchShown(!searchShown) },
         ) { GlyphBubble { SearchGlyph(Ink) } }
     }
     if (searchShown) {
         item {
-            ToggleRow(label = "Mikrofon in der Suchleiste", on = settings.searchMic, onToggle = { update { it.copy(searchMic = !it.searchMic) } }) {
+            ToggleRow(label = "Microphone in the search bar", on = settings.searchMic, onToggle = { update { it.copy(searchMic = !it.searchMic) } }) {
                 GlyphBubble { MicGlyph(Ink) }
             }
         }
@@ -167,9 +167,9 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
         ToggleRow(
             label = "Media",
             hint = when {
-                missingAccess -> "Benachrichtigungszugriff fehlt · antippen zum Freigeben"
-                settings.media -> "zeigt, was gerade läuft · Titel öffnet die App"
-                else -> "aus"
+                missingAccess -> "needs notification access · tap to allow"
+                settings.media -> "shows what’s playing · the title opens the app"
+                else -> "off"
             },
             on = settings.media,
             onToggle = { if (missingAccess) actions.openMediaAccessSettings() else update { it.copy(media = !it.media) } },
@@ -179,17 +179,17 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
 
 private fun LazyListScope.clockPage(settings: LauncherSettings, update: Update) {
     item {
-        ToggleRow(label = "Große Uhr", hint = if (settings.largeClock) "groß" else "kleiner", on = settings.largeClock, onToggle = { update { it.copy(largeClock = !it.largeClock) } }) {
+        ToggleRow(label = "Large clock", hint = if (settings.largeClock) "large" else "smaller", on = settings.largeClock, onToggle = { update { it.copy(largeClock = !it.largeClock) } }) {
             GlyphBubble { Text("12", style = TextStyle(fontFamily = IndieFlower, fontSize = 20.sp, color = Ink)) }
         }
     }
     item {
-        ToggleRow(label = "Wetter", hint = "Temperatur hinter dem Datum", on = settings.showWeather, onToggle = { update { it.copy(showWeather = !it.showWeather) } }) {
+        ToggleRow(label = "Weather", hint = "temperature after the date", on = settings.showWeather, onToggle = { update { it.copy(showWeather = !it.showWeather) } }) {
             GlyphBubble { Text("°C", style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = Ink)) }
         }
     }
     item {
-        ToggleRow(label = "Nächster Wecker", hint = "wenn einer in den nächsten 24 Stunden klingelt", on = settings.showAlarm, onToggle = { update { it.copy(showAlarm = !it.showAlarm) } }) {
+        ToggleRow(label = "Next alarm", hint = "if one rings within the next 24 hours", on = settings.showAlarm, onToggle = { update { it.copy(showAlarm = !it.showAlarm) } }) {
             GlyphBubble { Canvas(Modifier.size(20.dp)) { drawBellGlyph(Ink) } }
         }
     }
@@ -197,23 +197,23 @@ private fun LazyListScope.clockPage(settings: LauncherSettings, update: Update) 
 
 private fun LazyListScope.stapelPage(settings: LauncherSettings, hiddenApps: List<AppEntry>, actions: LauncherActions, update: Update) {
     item {
-        ToggleRow(label = "zuletzt", hint = "die letzten 4 Apps ganz oben", on = settings.drawerRecent, onToggle = { update { it.copy(drawerRecent = !it.drawerRecent) } }) {
+        ToggleRow(label = "Recent", hint = "the last 4 apps at the top", on = settings.drawerRecent, onToggle = { update { it.copy(drawerRecent = !it.drawerRecent) } }) {
             GlyphBubble { Canvas(Modifier.size(20.dp)) { drawGridGlyph(Ink) } }
         }
     }
     item {
-        ToggleRow(label = "Alphabet rechts", hint = "zum Springen", on = settings.drawerIndex, onToggle = { update { it.copy(drawerIndex = !it.drawerIndex) } }) {
+        ToggleRow(label = "Alphabet strip", hint = "to jump to a letter", on = settings.drawerIndex, onToggle = { update { it.copy(drawerIndex = !it.drawerIndex) } }) {
             GlyphBubble { Text("A–Z", style = TextStyle(fontFamily = IndieFlower, fontSize = 16.sp, color = Ink)) }
         }
     }
     item {
-        ToggleRow(label = "Buchstaben-Trenner", hint = "kleiner Buchstabe mit Linie", on = settings.drawerSections, onToggle = { update { it.copy(drawerSections = !it.drawerSections) } }) {
+        ToggleRow(label = "Letter headers", hint = "small letter with a line", on = settings.drawerSections, onToggle = { update { it.copy(drawerSections = !it.drawerSections) } }) {
             GlyphBubble { Text("A", style = TextStyle(fontFamily = IndieFlower, fontSize = 20.sp, color = Ink)) }
         }
     }
-    item { HandTitle("Ausgeblendet", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
+    item { HandTitle("Hidden", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     if (hiddenApps.isEmpty()) {
-        item { Text("keine · im Stapel eine App gedrückt halten → ausblenden", style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }
+        item { Text("none · hold an app in the stack → hide", style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }
     }
     hiddenApps.forEach { app ->
         item(key = app.key) {
@@ -227,14 +227,14 @@ private fun LazyListScope.stapelPage(settings: LauncherSettings, hiddenApps: Lis
                 AppIcon(app, 44.dp, actions)
                 Spacer(Modifier.width(16.dp))
                 Text(app.label, style = rowStyle, modifier = Modifier.weight(1f))
-                Text("einblenden", style = hintStyle)
+                Text("show", style = hintStyle)
             }
         }
     }
 }
 
 private fun LazyListScope.iconsPage(sampleApp: AppEntry?, globalStyle: IconStyle, iconPacks: List<IconSource>, actions: LauncherActions) {
-    item { Text("für alle Apps · einzelne Apps: gedrückt halten → Icon ändern", style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }
+    item { Text("for all apps · single apps: hold → change icon", style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }
     item {
         val choices = BUILT_IN_STYLES.map { (style) -> style to SHORT_LABELS.getValue(style) } +
             iconPacks.map { IconStyle.Pack(it.pkg) to it.label.removeSuffix(" Icons").removeSuffix(" Icon Pack") }
@@ -260,11 +260,11 @@ private fun LazyListScope.iconsPage(sampleApp: AppEntry?, globalStyle: IconStyle
 }
 
 private fun LazyListScope.gesturesPage(settings: LauncherSettings, update: Update) {
-    item { HandTitle("Runterwischen", Modifier.padding(horizontal = 22.dp)) }
+    item { HandTitle("Swipe down", Modifier.padding(horizontal = 22.dp)) }
     SwipeDownAction.entries.forEach { action ->
         item { ChoiceRow(action.label, selected = settings.swipeDown == action) { update { it.copy(swipeDown = action) } } }
     }
-    item { HandTitle("Doppeltippen", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
+    item { HandTitle("Double tap", Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     DoubleTapAction.entries.forEach { action ->
         item { ChoiceRow(action.label, selected = settings.doubleTap == action) { update { it.copy(doubleTap = action) } } }
     }
@@ -272,13 +272,13 @@ private fun LazyListScope.gesturesPage(settings: LauncherSettings, update: Updat
 
 private fun LazyListScope.generalPage(settings: LauncherSettings, actions: LauncherActions, update: Update) {
     item {
-        ToggleRow(label = "Vibration", hint = "beim Gedrückthalten und Ziehen", on = settings.haptics, onToggle = { update { it.copy(haptics = !it.haptics) } }) {
+        ToggleRow(label = "Vibration", hint = "when holding and dragging", on = settings.haptics, onToggle = { update { it.copy(haptics = !it.haptics) } }) {
             GlyphBubble { Canvas(Modifier.size(20.dp)) { drawWaveGlyph(Ink) } }
         }
     }
     item {
         Text(
-            "Als Standard-Launcher festlegen",
+            "Set as default launcher",
             maxLines = 1,
             textAlign = TextAlign.Center,
             style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = Cream),
