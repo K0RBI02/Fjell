@@ -21,7 +21,6 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -577,12 +576,11 @@ private object NoHaptics : HapticFeedback {
 
 /**
  * The "now playing" line in the wallpaper's media band: title and artist in hand
- * lettering plus ⏮ ⏯ ⏭. Tap the title to play/pause, swipe it to skip, hold to open the player.
+ * lettering plus ⏯ and ⏭. Tapping the title opens the player for everything else.
  */
 @Composable
 private fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherActions, modifier: Modifier = Modifier) {
-    val haptics = LocalHapticFeedback.current
-    val skipDistance = with(LocalDensity.current) { 48.dp.toPx() }
+    val noRipple = remember { MutableInteractionSource() }
     val shadow = if (color == Color.White) softShadow else null
     val text = listOfNotNull(nowPlaying.title, nowPlaying.artist).joinToString(" – ")
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
@@ -591,29 +589,8 @@ private fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherAct
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = color, shadow = shadow),
-            modifier = Modifier
-                .weight(1f)
-                .pointerInput(Unit) {
-                    var dx = 0f
-                    detectHorizontalDragGestures(
-                        onDragStart = { dx = 0f },
-                        onHorizontalDrag = { change, amount -> change.consume(); dx += amount },
-                        onDragEnd = {
-                            if (dx < -skipDistance) actions.mediaNext() else if (dx > skipDistance) actions.mediaPrevious()
-                        },
-                    )
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onTap = { actions.mediaPlayPause() },
-                        onLongPress = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            actions.mediaOpen()
-                        },
-                    )
-                },
+            modifier = Modifier.weight(1f).clickable(noRipple, null, onClick = actions::mediaOpen),
         )
-        MediaButton(color, actions::mediaPrevious) { drawPreviousGlyph(it) }
         MediaButton(color, actions::mediaPlayPause) { if (nowPlaying.playing) drawPauseGlyph(it) else drawPlayGlyph(it) }
         MediaButton(color, actions::mediaNext) { drawNextGlyph(it) }
     }
@@ -648,13 +625,6 @@ private fun DrawScope.drawNextGlyph(color: Color) {
     val h = size.height
     drawPath(Path().apply { moveTo(w * 0.08f, h * 0.12f); lineTo(w * 0.66f, h * 0.5f); lineTo(w * 0.08f, h * 0.88f); close() }, color)
     drawRoundRect(color, Offset(w * 0.72f, h * 0.12f), Size(w * 0.16f, h * 0.76f), CornerRadius(w * 0.05f))
-}
-
-private fun DrawScope.drawPreviousGlyph(color: Color) {
-    val w = size.width
-    val h = size.height
-    drawPath(Path().apply { moveTo(w * 0.92f, h * 0.12f); lineTo(w * 0.34f, h * 0.5f); lineTo(w * 0.92f, h * 0.88f); close() }, color)
-    drawRoundRect(color, Offset(w * 0.12f, h * 0.12f), Size(w * 0.16f, h * 0.76f), CornerRadius(w * 0.05f))
 }
 
 /** The home search bar: a long bubble with a magnifier, a hand-written hint and an optional mic. */
