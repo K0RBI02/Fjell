@@ -370,6 +370,8 @@ class MainActivity : ComponentActivity() {
         override fun expandNotifications() = this@MainActivity.expandNotifications()
 
         override suspend fun icon(app: AppEntry, sizePx: Int): ImageBitmap = withContext(Dispatchers.Default) {
+            // A cached icon skips loading the app's own drawable, which is the slow part.
+            icons.cachedIcon(app, sizePx)?.let { return@withContext it.asImageBitmap() }
             val original = repo.activityInfo(app)?.getIcon(0)
             icons.icon(app, original, sizePx).asImageBitmap()
         }
