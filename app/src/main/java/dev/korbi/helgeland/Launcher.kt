@@ -3,14 +3,19 @@ package dev.korbi.helgeland
 import android.app.Activity
 import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -605,14 +610,27 @@ private fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherAct
     val shadow = if (color == Color.White) softShadow else null
     val text = listOfNotNull(nowPlaying.title, nowPlaying.artist).joinToString(" – ")
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
-        Text(
-            text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = color, shadow = shadow),
+        // A new track slides in from the right while the old one leaves to the left, like flipping on.
+        AnimatedContent(
+            targetState = text,
+            transitionSpec = {
+                (slideInHorizontally(tween(320)) { it / 3 } + fadeIn(tween(320))) togetherWith
+                    (slideOutHorizontally(tween(260)) { -it / 3 } + fadeOut(tween(200)))
+            },
+            contentAlignment = Alignment.CenterStart,
+            label = "track",
             modifier = Modifier.weight(1f).clickable(noRipple, null, onClick = actions::mediaOpen),
-        )
-        MediaButton(color, actions::mediaPlayPause) { if (nowPlaying.playing) drawPauseGlyph(it) else drawPlayGlyph(it) }
+        ) { title ->
+            Text(
+                title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = color, shadow = shadow),
+            )
+        }
+        Crossfade(nowPlaying.playing, animationSpec = tween(180), label = "playPause") { playing ->
+            MediaButton(color, actions::mediaPlayPause) { if (playing) drawPauseGlyph(it) else drawPlayGlyph(it) }
+        }
         MediaButton(color, actions::mediaNext) { drawNextGlyph(it) }
     }
 }
@@ -778,9 +796,14 @@ private fun Drawer(
     var query by rememberSaveable { mutableStateOf("") }
     val showHeaders = settings.drawerSections
     // The stack holds everything not on the home grid; search covers all apps.
-    val filtered = remember(apps, gridKeys, hiddenKeys, query) {
+    val filtered = remember(apps, gridKeys, hiddenKeys, query, launchCounts) {
         val q = query.trim()
-        if (q.isEmpty()) apps.filter { it.key !in gridKeys && it.key !in hiddenKeys } else apps.filter { it.label.contains(q, ignoreCase = true) }
+        if (q.isEmpty()) {
+            apps.filter { it.key !in gridKeys && it.key !in hiddenKeys }
+        } else {
+            // Search hits: most used first, ties alphabetical (stable sort).
+            apps.filter { it.label.contains(q, ignoreCase = true) }.sortedByDescending { launchCounts[it.key] ?: 0 }
+        }
     }
     val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query, settings.drawerRecent) {
         if (query.isNotBlank() || !settings.drawerRecent) return@remember emptyList()
