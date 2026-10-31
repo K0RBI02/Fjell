@@ -1,6 +1,5 @@
 package dev.korbi.fjell
 
-import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -27,6 +26,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -62,15 +64,22 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
-private val DangerColor = Color(0xFFB0413A)
+/** A soft red that still reads on the dark menu. */
+private val DangerColor = Color(0xFFEE8A80)
+
+/** Dark like the popup sheet, but opaque enough to stand on its own without a blur. */
+private val MenuColor = Color(0xEB161A28)
 
 /**
- * A small card in the popup palette that floats right above its anchor (or below
- * it when there's no room) and grows out of it. Used for all long-press menus.
+ * A small dark card that floats right above its anchor (or below it when there's no
+ * room), grows out of it and fades back into it. Used for all long-press menus;
+ * [content] gets a `dismiss` that plays the fade before [onDismiss] runs.
  */
 @Composable
-private fun MenuCard(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+private fun MenuCard(onDismiss: () -> Unit, content: @Composable ColumnScope.(dismiss: () -> Unit) -> Unit) {
     val density = LocalDensity.current
     var opensUpward by remember { mutableStateOf(true) }
     val positioner = remember(density) {
@@ -87,10 +96,21 @@ private fun MenuCard(onDismiss: () -> Unit, content: @Composable ColumnScope.() 
         }
     }
 
-    Popup(popupPositionProvider = positioner, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        var shown by remember { mutableStateOf(false) }
+    var shown by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val close by rememberUpdatedState(onDismiss)
+    val dismiss: () -> Unit = {
+        if (shown) {
+            shown = false
+            scope.launch {
+                delay(FADE_OUT_MS)
+                close()
+            }
+        }
+    }
+    Popup(popupPositionProvider = positioner, onDismissRequest = dismiss, properties = PopupProperties(focusable = true)) {
         LaunchedEffect(Unit) { shown = true }
-        val appear by animateFloatAsState(if (shown) 1f else 0f, tween(180), label = "menu")
+        val appear by animateFloatAsState(if (shown) 1f else 0f, tween(if (shown) 180 else FADE_OUT_MS.toInt()), label = "menu")
         Column(
             Modifier
                 .width(236.dp)
@@ -103,12 +123,13 @@ private fun MenuCard(onDismiss: () -> Unit, content: @Composable ColumnScope.() 
                 }
                 .shadow(16.dp, RoundedCornerShape(26.dp), ambientColor = Ink, spotColor = Ink)
                 .clip(RoundedCornerShape(26.dp))
-                .background(PopupColor)
+                .background(MenuColor)
                 .padding(vertical = 8.dp),
-            content = content,
-        )
+        ) { content(dismiss) }
     }
 }
+
+private const val FADE_OUT_MS = 140L
 
 /** Long-press menu for an app. */
 @Composable
@@ -119,8 +140,8 @@ fun AppMenuPopup(
     onOpenIconPicker: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val dismissThen = { action: () -> Unit -> onDismiss(); action() }
-    MenuCard(onDismiss) {
+    MenuCard(onDismiss) { dismiss ->
+        val dismissThen = { action: () -> Unit -> dismiss(); action() }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             AppIcon(app, 36.dp, actions)
             Spacer(Modifier.width(12.dp))
@@ -149,12 +170,12 @@ fun StapelMenuPopup(
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val dismissThen = { action: () -> Unit -> onDismiss(); action() }
-    MenuCard(onDismiss) {
+    MenuCard(onDismiss) { dismiss ->
+        val dismissThen = { action: () -> Unit -> dismiss(); action() }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             StapelIcon(minOf(iconSize, 36.dp))
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.stapel_button), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
+            Text(stringResource(R.string.stapel_button), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = PopupText))
         }
         MenuDivider()
         MenuRow(stringResource(R.string.menu_opens_stack), glyph = DrawScope::drawListGlyph, checked = !opensSettings) { actions.updateSettings { it.copy(stapelOpensSettings = false) } }
@@ -168,14 +189,14 @@ fun StapelMenuPopup(
 /** Long-press menu for the search bar: its width, and taking it off the grid. */
 @Composable
 fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss: () -> Unit) {
-    val dismissThen = { action: () -> Unit -> onDismiss(); action() }
-    MenuCard(onDismiss) {
+    MenuCard(onDismiss) { dismiss ->
+        val dismissThen = { action: () -> Unit -> dismiss(); action() }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Box(Modifier.size(36.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
                 SearchGlyph(Ink)
             }
             Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.search_bar), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink))
+            Text(stringResource(R.string.search_bar), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = PopupText))
         }
         MenuDivider()
         MenuRow(stringResource(R.string.menu_two_slots), glyph = DrawScope::drawNarrowGlyph, checked = span == 2) { dismissThen { actions.setSearchWidth(2) } }
@@ -189,13 +210,13 @@ fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss
 
 @Composable
 private fun MenuDivider() {
-    Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().height(1.dp).background(Ink.copy(alpha = 0.1f)))
+    Box(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().height(1.dp).background(PopupText.copy(alpha = 0.14f)))
 }
 
 /** The app's name; tap it to type a new one. Enter or ✓ saves, an empty name restores the original. */
 @Composable
 private fun RowScope.EditableName(app: AppEntry, onRename: (String) -> Unit) {
-    val nameStyle = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Ink)
+    val nameStyle = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = PopupText)
     var editing by remember { mutableStateOf(false) }
     if (!editing) {
         Row(
@@ -204,7 +225,7 @@ private fun RowScope.EditableName(app: AppEntry, onRename: (String) -> Unit) {
         ) {
             Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis, style = nameStyle, modifier = Modifier.weight(1f, fill = false))
             Spacer(Modifier.width(8.dp))
-            Canvas(Modifier.size(13.dp)) { drawPencilGlyph(Ink.copy(alpha = 0.4f)) }
+            Canvas(Modifier.size(13.dp)) { drawPencilGlyph(PopupText.copy(alpha = 0.45f)) }
         }
         return
     }
@@ -217,24 +238,24 @@ private fun RowScope.EditableName(app: AppEntry, onRename: (String) -> Unit) {
         onValueChange = { text = it },
         singleLine = true,
         textStyle = nameStyle,
-        cursorBrush = SolidColor(Ink),
+        cursorBrush = SolidColor(PopupText),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onRename(text.text) }),
         modifier = Modifier
             .weight(1f)
             .focusRequester(focus)
-            .background(Ink.copy(alpha = 0.06f), RoundedCornerShape(10.dp))
+            .background(PopupText.copy(alpha = 0.1f), RoundedCornerShape(10.dp))
             .padding(horizontal = 8.dp, vertical = 2.dp),
     )
     Text(
         "✓",
-        style = TextStyle(fontFamily = Lato, fontSize = 20.sp, color = Ink),
+        style = TextStyle(fontFamily = Lato, fontSize = 20.sp, color = PopupText),
         modifier = Modifier.clickable { onRename(text.text) }.padding(start = 10.dp, end = 2.dp),
     )
 }
 
 @Composable
-private fun MenuRow(label: String, color: Color = Ink, glyph: DrawScope.(Color) -> Unit, checked: Boolean = false, onClick: () -> Unit) {
+private fun MenuRow(label: String, color: Color = PopupText, glyph: DrawScope.(Color) -> Unit, checked: Boolean = false, onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
