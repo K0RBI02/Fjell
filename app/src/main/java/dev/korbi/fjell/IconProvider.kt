@@ -54,6 +54,7 @@ data class IconSource(val pkg: String, val label: String)
 class IconProvider(private val context: Context, private val prefs: Prefs) {
     private val packs = HashMap<String, IconPack?>()
     private val dir = File(context.filesDir, "icons")
+    private val diskDir = File(context.cacheDir, "rendered-icons")
 
     private val cache = object : LruCache<String, Bitmap>(32 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
@@ -63,11 +64,15 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
 
     fun overrideFor(app: AppEntry): IconStyle? = IconStyle.parse(prefs.iconOverride(app.key))
 
-    /** Drops loaded packs and rendered icons. Re-reads the default pack; call off the main thread. */
+    /**
+     * Drops loaded packs and in-memory icons. Packs load again lazily, only for icons that
+     * aren't on disk yet, so a normal start doesn't parse any pack at all.
+     */
     fun reload() {
         synchronized(packs) { packs.clear() }
         cache.evictAll()
-        (globalStyle as? IconStyle.Pack)?.let { pack(it.pkg) }
+        // Every look change writes new files under new names; clear out the leftovers now and then.
+        if ((diskDir.list()?.size ?: 0) > DISK_CACHE_MAX_FILES) diskDir.deleteRecursively()
     }
 
     fun invalidate() = cache.evictAll()
@@ -79,11 +84,49 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
         }.getOrNull()
     }
 
-    fun icon(app: AppEntry, original: Drawable?, size: Int): Bitmap =
-        render(app, original, size, overrideFor(app) ?: globalStyle)
+    /** The icon from memory or disk if it still matches the app, its style and the theme; null means render it. */
+    fun cachedIcon(app: AppEntry, size: Int): Bitmap? {
+        val style = overrideFor(app) ?: globalStyle
+        val memoryKey = memoryKey(app, size, style)
+        cache.get(memoryKey)?.let { return it }
+        val bitmap = BitmapFactory.decodeFile(diskFile(app, size, style).path) ?: return null
+        return bitmap.also { cache.put(memoryKey, it) }
+    }
+
+    /** Renders the icon in its current style and keeps it on disk for the next start. */
+    fun icon(app: AppEntry, original: Drawable?, size: Int): Bitmap {
+        val style = overrideFor(app) ?: globalStyle
+        val bitmap = render(app, original, size, style)
+        runCatching {
+            diskDir.mkdirs()
+            diskFile(app, size, style).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        return bitmap
+    }
+
+    private fun memoryKey(app: AppEntry, size: Int, style: IconStyle) = "${app.key}@$size#${style.id}"
+
+    /**
+     * Named after everything that changes the look: app and pack versions, the style,
+     * light/dark, and for custom pictures the picture itself. A stale file is simply
+     * never asked for again.
+     */
+    private fun diskFile(app: AppEntry, size: Int, style: IconStyle): File {
+        val packStamp = when (style) {
+            is IconStyle.Pack -> installedAt(style.pkg)
+            is IconStyle.PackIcon -> installedAt(style.pkg)
+            else -> 0L
+        }
+        val customStamp = if (style == IconStyle.Custom) customFile(app).lastModified() else 0L
+        val key = listOf(DISK_FORMAT, app.key, size, style.id, installedAt(app.component.packageName), packStamp, bubble(), customStamp).joinToString("|")
+        return File(diskDir, sha1(key) + ".png")
+    }
+
+    private fun installedAt(pkg: String): Long =
+        runCatching { context.packageManager.getPackageInfo(pkg, 0).lastUpdateTime }.getOrDefault(0L)
 
     fun render(app: AppEntry, original: Drawable?, size: Int, style: IconStyle): Bitmap {
-        val cacheKey = "${app.key}@$size#${style.id}"
+        val cacheKey = memoryKey(app, size, style)
         cache.get(cacheKey)?.let { return it }
         val bubble = bubble()
         val bitmap = when (style) {
@@ -132,10 +175,10 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
 
     private fun customPicture(app: AppEntry): Bitmap? = BitmapFactory.decodeFile(customFile(app).path)
 
-    private fun customFile(app: AppEntry): File {
-        val digest = MessageDigest.getInstance("SHA-1").digest(app.key.toByteArray())
-        return File(dir, digest.joinToString("") { "%02x".format(it) } + ".png")
-    }
+    private fun customFile(app: AppEntry): File = File(dir, sha1(app.key) + ".png")
+
+    private fun sha1(text: String): String =
+        MessageDigest.getInstance("SHA-1").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     /** Same light/dark bubble the Nothing pack uses, so styles mix well. */
     private fun bubble(): Int {
@@ -145,5 +188,9 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
 
     companion object {
         private const val CUSTOM_MAX_PX = 512
+
+        /** Bump when rendering changes, so icons drawn by older code are ignored. */
+        private const val DISK_FORMAT = 1
+        private const val DISK_CACHE_MAX_FILES = 3000
     }
 }
