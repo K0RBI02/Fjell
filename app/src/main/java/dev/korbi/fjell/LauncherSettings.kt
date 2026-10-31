@@ -64,6 +64,7 @@ data class LauncherSettings(
     val searchMic: Boolean = true,
     val media: Boolean = false,
     val notificationDots: Boolean = true,
+    val searchContacts: Boolean = false,
 ) {
     fun save(sp: SharedPreferences) {
         sp.edit()
@@ -81,6 +82,7 @@ data class LauncherSettings(
             .putBoolean("searchMic", searchMic)
             .putBoolean("media", media)
             .putBoolean("notificationDots", notificationDots)
+            .putBoolean("searchContacts", searchContacts)
             .apply()
     }
 
@@ -102,6 +104,7 @@ data class LauncherSettings(
                 searchMic = sp.getBoolean("searchMic", d.searchMic),
                 media = sp.getBoolean("media", d.media),
                 notificationDots = sp.getBoolean("notificationDots", d.notificationDots),
+                searchContacts = sp.getBoolean("searchContacts", d.searchContacts),
             )
         }
 

@@ -226,6 +226,14 @@ private fun LazyListScope.stapelPage(settings: LauncherSettings, hiddenApps: Lis
             GlyphBubble { Text("A", style = TextStyle(fontFamily = IndieFlower, fontSize = 20.sp, color = Ink)) }
         }
     }
+    item {
+        ToggleRow(
+            label = stringResource(R.string.contacts_in_search),
+            hint = stringResource(R.string.contacts_in_search_hint),
+            on = settings.searchContacts,
+            onToggle = { update { it.copy(searchContacts = !it.searchContacts) } },
+        ) { GlyphBubble { Text("@", style = TextStyle(fontFamily = IndieFlower, fontSize = 20.sp, color = Ink)) } }
+    }
     item { HandTitle(stringResource(R.string.hidden), Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     if (hiddenApps.isEmpty()) {
         item { Text(stringResource(R.string.hidden_none), style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }

@@ -109,4 +109,7 @@
     <string name="lock_service_label">Fjell screen lock</string>
     <string name="lock_service_description">Lets Fjell lock the screen when you double-tap the home screen. It reads nothing on your screen and reacts to nothing else.</string>
     <string name="toast_enable_lock">Switch on “Fjell screen lock” to lock with a double tap</string>
+    <string name="contacts_in_search">Contacts in search</string>
+    <string name="contacts_in_search_hint">after apps and calculations, before the web</string>
+    <string name="toast_copied">Copied %1$s</string>
 </resources>

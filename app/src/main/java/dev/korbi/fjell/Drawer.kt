@@ -1,6 +1,5 @@
 package dev.korbi.fjell
 
-import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,9 +32,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -44,6 +45,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -57,6 +60,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -65,6 +69,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.Normalizer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,9 +81,23 @@ internal fun Drawer(
     hiddenKeys: Set<String>,
     settings: LauncherSettings,
     actions: LauncherActions,
+    /** Opened from a search entry point: focus the field and bring up the keyboard. */
+    focusSearch: Boolean,
     onClose: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    val searchFocus = remember { FocusRequester() }
+    LaunchedEffect(focusSearch) { if (focusSearch) searchFocus.requestFocus() }
+    val calculation = remember(query) { Calculator.evaluate(query)?.let(Calculator::format) }
+    // Contacts arrive a moment later (and only with the option and permission on).
+    val contacts by produceState(emptyList<ContactHit>(), query, settings.searchContacts) {
+        value = if (settings.searchContacts && query.isNotBlank()) {
+            delay(150)
+            actions.searchContacts(query)
+        } else {
+            emptyList()
+        }
+    }
     val showHeaders = settings.drawerSections
     // The stack holds everything not on the home grid; search covers all apps.
     val filtered = remember(apps, gridKeys, hiddenKeys, query, launchCounts) {
@@ -181,6 +200,7 @@ internal fun Drawer(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
+                .focusRequester(searchFocus)
                 .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
                 .padding(horizontal = 22.dp, vertical = 14.dp),
             decorationBox = { field ->
@@ -223,7 +243,17 @@ internal fun Drawer(
                 contentPadding = WindowInsets.navigationBars.asPaddingValues(),
             ) {
                 if (sections == null) {
+                    // Apps first, then a calculation, then contacts; the web is the last resort.
                     items(filtered, key = { it.key }) { appRow(it) }
+                    if (calculation != null) {
+                        item(key = "calc") { CalculationRow(calculation) { actions.copyToClipboard(calculation) } }
+                    }
+                    items(contacts, key = { "contact:" + it.uri }) { contact ->
+                        ContactRow(contact) {
+                            actions.openContact(contact)
+                            close()
+                        }
+                    }
                     item(key = "web") {
                         WebSearchRow(query.trim()) {
                             actions.searchWeb(query.trim())
@@ -276,6 +306,39 @@ private fun RecentRow(apps: List<AppEntry>, actions: LauncherActions, onLaunch: 
             }
         }
         repeat(RECENT_SHOWN - apps.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+/** "= 48" for a calculation typed into the search; tap to copy the result. */
+@Composable
+private fun CalculationRow(result: String, onClick: () -> Unit) {
+    SearchExtraRow(onClick = onClick, leading = { Text("=", style = TextStyle(fontFamily = IndieFlower, fontSize = 24.sp, color = Color.White)) }) {
+        Text(result, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White))
+    }
+}
+
+@Composable
+private fun ContactRow(contact: ContactHit, onClick: () -> Unit) {
+    SearchExtraRow(onClick = onClick, leading = {
+        Text(contact.name.take(1).uppercase(), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Color.White))
+    }) {
+        Text(contact.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White))
+    }
+}
+
+/** A search result that isn't an app: a faint bubble with a glyph or letter, then the text. */
+@Composable
+private fun SearchExtraRow(onClick: () -> Unit, leading: @Composable () -> Unit, text: @Composable () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 28.dp, end = 40.dp, top = 9.dp, bottom = 9.dp),
+    ) {
+        Box(Modifier.size(42.dp).background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(36)), contentAlignment = Alignment.Center) { leading() }
+        Spacer(Modifier.width(18.dp))
+        text()
     }
 }
 
