@@ -29,6 +29,11 @@ class Prefs(context: Context) {
             ?: emptyMap()
         set(value) = sp.edit().putString("launchCounts", value.entries.joinToString("\n") { "${it.key}\t${it.value}" }).apply()
 
+    /** Keys of apps whose notification dot is switched off. */
+    var noDots: Set<String>
+        get() = sp.getStringSet("noDots", null)?.toSet() ?: emptySet()
+        set(value) = sp.edit().putStringSet("noDots", value).apply()
+
     /** App keys, most recently launched first. */
     var recent: List<String>
         get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()

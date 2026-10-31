@@ -1,6 +1,5 @@
 package dev.korbi.helgeland
 
-import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -18,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -88,6 +90,8 @@ internal fun AppGrid(
     actions: LauncherActions,
     stapelOpensSettings: Boolean,
     searchMic: Boolean,
+    dotPackages: Set<String>,
+    noDots: Set<String>,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -220,7 +224,12 @@ internal fun AppGrid(
                 ) {
                     when (item) {
                         is GridItem.App -> {
-                            AppIcon(item.entry, iconSize, actions, renderSize = maxIconSize)
+                            Box {
+                                AppIcon(item.entry, iconSize, actions, renderSize = maxIconSize)
+                                if (item.entry.component.packageName in dotPackages && item.entry.key !in noDots) {
+                                    NotificationDot(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp))
+                                }
+                            }
                             AppMenu(menuSlot == i, onDismiss = { menuSlot = null }, app = item.entry, inGrid = true, actions = actions)
                         }
                         GridItem.Stapel -> {
@@ -245,6 +254,18 @@ internal fun AppGrid(
             }
         }
     }
+}
+
+/** A small dot in the wallpaper's barn red, ringed in white so it reads on any bubble. */
+@Composable
+private fun NotificationDot(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(12.dp)
+            .background(Color.White, CircleShape)
+            .padding(2.dp)
+            .background(Color(0xFFC14A42), CircleShape),
+    )
 }
 
 /** The home search bar: a long bubble with a magnifier, a hand-written hint and an optional mic. */

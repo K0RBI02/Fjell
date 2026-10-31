@@ -156,6 +156,12 @@ fun AppMenuPopup(
                 dismissThen { actions.setHidden(app, !hidden) }
             }
         }
+        if (inGrid) {
+            val dotHidden = actions.isDotHidden(app)
+            MenuRow(stringResource(if (dotHidden) R.string.menu_show_dot else R.string.menu_hide_dot), glyph = DrawScope::drawDotGlyph) {
+                dismissThen { actions.setDotHidden(app, !dotHidden) }
+            }
+        }
         MenuRow(stringResource(R.string.menu_app_info), glyph = DrawScope::drawInfoGlyph) { dismissThen { actions.appInfo(app) } }
         MenuRow(stringResource(R.string.menu_uninstall), color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.uninstall(app) } }
     }
@@ -285,6 +291,12 @@ fun DrawScope.drawMicGlyph(color: Color) {
     drawRoundRect(color, Offset(w * 0.36f, h * 0.06f), Size(w * 0.28f, h * 0.5f), CornerRadius(w * 0.14f))
     drawArc(color, 0f, 180f, false, Offset(w * 0.2f, h * 0.2f), Size(w * 0.6f, h * 0.52f), style = Stroke(stroke, cap = StrokeCap.Round))
     drawLine(color, Offset(w * 0.5f, h * 0.72f), Offset(w * 0.5f, h * 0.92f), stroke, StrokeCap.Round)
+}
+
+private fun DrawScope.drawDotGlyph(color: Color) {
+    val stroke = size.minDimension * 0.1f
+    drawRoundRect(color, Offset(stroke / 2, size.height * 0.2f), Size(size.width * 0.72f, size.height * 0.72f), CornerRadius(size.minDimension * 0.22f), style = Stroke(stroke))
+    drawCircle(color, size.minDimension * 0.17f, Offset(size.width * 0.78f, size.height * 0.22f))
 }
 
 private fun DrawScope.drawHideGlyph(color: Color) {

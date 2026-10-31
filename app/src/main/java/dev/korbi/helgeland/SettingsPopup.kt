@@ -165,6 +165,19 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
         }
     }
     item {
+        val missingAccess = settings.notificationDots && !actions.hasMediaAccess()
+        ToggleRow(
+            label = stringResource(R.string.notification_dots),
+            hint = when {
+                missingAccess -> stringResource(R.string.media_needs_access)
+                settings.notificationDots -> stringResource(R.string.notification_dots_hint)
+                else -> stringResource(R.string.off)
+            },
+            on = settings.notificationDots,
+            onToggle = { if (missingAccess) actions.openMediaAccessSettings() else update { it.copy(notificationDots = !it.notificationDots) } },
+        ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawCircle(Ink, size.minDimension * 0.22f) } } }
+    }
+    item {
         val missingAccess = settings.media && !actions.hasMediaAccess()
         ToggleRow(
             label = stringResource(R.string.media),

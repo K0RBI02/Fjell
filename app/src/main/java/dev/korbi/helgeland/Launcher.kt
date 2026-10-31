@@ -83,6 +83,8 @@ fun Launcher(
     iconPacks: List<IconSource>,
     settings: LauncherSettings,
     nowPlaying: NowPlaying?,
+    dotPackages: Set<String>,
+    noDots: Set<String>,
     homePresses: Int,
     actions: LauncherActions,
 ) {
@@ -124,6 +126,8 @@ fun Launcher(
                     temperature = temperature.takeIf { settings.showWeather },
                     nextAlarm = nextAlarm.takeIf { settings.showAlarm },
                     nowPlaying = nowPlaying.takeIf { settings.media },
+                    dotPackages = dotPackages,
+                    noDots = noDots,
                     settings = settings,
                     actions = actions,
                     onOpenDrawer = { drawerOpen = true },

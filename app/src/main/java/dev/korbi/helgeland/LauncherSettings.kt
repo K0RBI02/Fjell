@@ -62,6 +62,7 @@ data class LauncherSettings(
     val stapelOpensSettings: Boolean = false,
     val searchMic: Boolean = true,
     val media: Boolean = false,
+    val notificationDots: Boolean = true,
 ) {
     fun save(sp: SharedPreferences) {
         sp.edit()
@@ -78,6 +79,7 @@ data class LauncherSettings(
             .putBoolean("stapelOpensSettings", stapelOpensSettings)
             .putBoolean("searchMic", searchMic)
             .putBoolean("media", media)
+            .putBoolean("notificationDots", notificationDots)
             .apply()
     }
 
@@ -98,6 +100,7 @@ data class LauncherSettings(
                 stapelOpensSettings = sp.getBoolean("stapelOpensSettings", d.stapelOpensSettings),
                 searchMic = sp.getBoolean("searchMic", d.searchMic),
                 media = sp.getBoolean("media", d.media),
+                notificationDots = sp.getBoolean("notificationDots", d.notificationDots),
             )
         }
 
