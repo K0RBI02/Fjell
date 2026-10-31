@@ -1,5 +1,6 @@
 package dev.korbi.helgeland
 
+import androidx.compose.ui.res.stringResource
 import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -168,7 +169,7 @@ internal fun Home(
         ) {
             if (slots.all { it == null }) {
                 Text(
-                    "swipe up · hold an app → add to home screen",
+                    stringResource(R.string.home_empty_hint),
                     style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = Color.White, shadow = softShadow),
                 )
             } else {

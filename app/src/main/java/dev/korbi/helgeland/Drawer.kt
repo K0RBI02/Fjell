@@ -1,5 +1,6 @@
 package dev.korbi.helgeland
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -188,7 +189,7 @@ internal fun Drawer(
                     Spacer(Modifier.width(14.dp))
                     Box {
                         if (query.isEmpty()) {
-                            Text("search", style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.55f)))
+                            Text(stringResource(R.string.search_hint), style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.55f)))
                         }
                         field()
                     }
@@ -231,7 +232,7 @@ internal fun Drawer(
                     }
                 } else {
                     if (recentApps.isNotEmpty()) {
-                        item(key = "recent:header") { SectionHeader("recent") }
+                        item(key = "recent:header") { SectionHeader(stringResource(R.string.recent_header)) }
                         item(key = "recent:row") { RecentRow(recentApps, actions, onLaunch = launchAndClose) }
                     }
                     sections.forEach { (letter, group) ->
@@ -293,7 +294,7 @@ private fun WebSearchRow(query: String, onClick: () -> Unit) {
         }
         Spacer(Modifier.width(18.dp))
         Text(
-            "Search the web: “$query”",
+            stringResource(R.string.search_web, query),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.85f)),
