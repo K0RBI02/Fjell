@@ -15,6 +15,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
 import android.provider.Settings
+import android.service.notification.NotificationListenerService
 import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -55,6 +56,8 @@ class MainActivity : ComponentActivity() {
     private val iconPacks = mutableStateOf<List<IconSource>>(emptyList())
     private val settings = mutableStateOf(LauncherSettings())
     private val nowPlaying = mutableStateOf<NowPlaying?>(null)
+    private val dotPackages = mutableStateOf<Set<String>>(emptySet())
+    private val noDots = mutableStateOf<Set<String>>(emptySet())
     private val media by lazy { MediaWatcher(this) { nowPlaying.value = it } }
 
     /** Bumped whenever icons may look different, so the UI re-renders them. */
@@ -91,6 +94,8 @@ class MainActivity : ComponentActivity() {
         recent.value = prefs.recent
         launchCounts.value = prefs.launchCounts
         hidden.value = prefs.hidden
+        noDots.value = prefs.noDots
+        lifecycleScope.launch { NotificationDots.packages.collect { dotPackages.value = it } }
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
         temperature.value = prefs.lastTemperature
@@ -122,6 +127,8 @@ class MainActivity : ComponentActivity() {
                 iconPacks = iconPacks.value,
                 settings = settings.value,
                 nowPlaying = nowPlaying.value,
+                dotPackages = if (settings.value.notificationDots) dotPackages.value else emptySet(),
+                noDots = noDots.value,
                 homePresses = homePresses.intValue,
                 actions = actions,
             )
@@ -139,6 +146,10 @@ class MainActivity : ComponentActivity() {
         refreshNextAlarm()
         // Restarted on every return, so a freshly granted notification access takes effect right away.
         if (settings.value.media) media.start()
+        // After an update Android can be slow to reconnect our listener; ask it to.
+        if ((settings.value.media || settings.value.notificationDots) && MediaWatcher.hasAccess(this)) {
+            NotificationListenerService.requestRebind(ComponentName(this, MediaListener::class.java))
+        }
     }
 
     override fun onPause() {
@@ -272,6 +283,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             if (after.showWeather && !before.showWeather) refreshWeather(force = true)
+            if (after.notificationDots && !before.notificationDots && !MediaWatcher.hasAccess(this@MainActivity)) openMediaAccessSettings()
         }
 
         override fun hasMediaAccess() = MediaWatcher.hasAccess(this@MainActivity)
@@ -364,6 +376,13 @@ class MainActivity : ComponentActivity() {
 
         override fun setAppIconStyle(app: AppEntry, style: IconStyle?) = setIconOverride(app, style)
 
+        override fun setDotHidden(app: AppEntry, hide: Boolean) {
+            noDots.value = if (hide) noDots.value + app.key else noDots.value - app.key
+            prefs.noDots = noDots.value
+        }
+
+        override fun isDotHidden(app: AppEntry) = app.key in noDots.value
+
         override fun setHidden(app: AppEntry, hide: Boolean) {
             hidden.value = if (hide) hidden.value + app.key else hidden.value - app.key
             prefs.hidden = hidden.value
@@ -444,6 +463,8 @@ interface LauncherActions {
     fun setAppIconStyle(app: AppEntry, style: IconStyle?)
     fun pickCustomIcon(app: AppEntry)
 
+    fun setDotHidden(app: AppEntry, hide: Boolean)
+    fun isDotHidden(app: AppEntry): Boolean
     fun setHidden(app: AppEntry, hide: Boolean)
     fun isHidden(app: AppEntry): Boolean
 

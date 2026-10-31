@@ -101,4 +101,8 @@
     <string name="toast_grid_full">The grid is full – remove an app first</string>
     <string name="toast_search_needs_space">The search bar needs 2 free slots side by side</string>
     <string name="toast_no_row_space">No row has enough free slots for that</string>
+    <string name="notification_dots">Notification dots</string>
+    <string name="notification_dots_hint">on app icons in the grid · per app in its menu</string>
+    <string name="menu_hide_dot">Hide notification dot</string>
+    <string name="menu_show_dot">Show notification dot</string>
 </resources>

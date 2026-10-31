@@ -8,14 +8,45 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
+import android.app.Notification
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
- * Exists only so Android lets us read other apps' media sessions; it never looks
- * at notifications themselves.
+ * The notification listener Android requires for reading media sessions. It also
+ * notes which apps have notifications worth a dot (nothing else is kept: no titles,
+ * no content). The class name must stay, or users would have to grant access again.
  */
-class MediaListener : NotificationListenerService()
+class MediaListener : NotificationListenerService() {
+    override fun onListenerConnected() = publish()
+    override fun onListenerDisconnected() {
+        NotificationDots.packages.value = emptySet()
+    }
+    override fun onNotificationPosted(sbn: StatusBarNotification?) = publish()
+    override fun onNotificationRemoved(sbn: StatusBarNotification?) = publish()
+    override fun onNotificationRankingUpdate(rankingMap: RankingMap?) = publish()
+
+    /** Dismissable notifications whose channel allows a badge; ongoing ones (music, downloads) don't count. */
+    private fun publish() {
+        val active = runCatching { activeNotifications }.getOrNull() ?: return
+        val ranking = currentRanking
+        val scratch = Ranking()
+        NotificationDots.packages.value = active
+            .filter { it.isClearable && !it.notification.isGroupSummaryLike() }
+            .filter { ranking == null || !ranking.getRanking(it.key, scratch) || scratch.canShowBadge() }
+            .map { it.packageName }
+            .toSet()
+    }
+
+    private fun Notification.isGroupSummaryLike() = flags and Notification.FLAG_GROUP_SUMMARY != 0
+}
+
+/** Packages that currently have a dot-worthy notification, shared from the listener to the UI. */
+object NotificationDots {
+    val packages = MutableStateFlow<Set<String>>(emptySet())
+}
 
 /** What's playing right now, as far as the home screen cares. */
 data class NowPlaying(

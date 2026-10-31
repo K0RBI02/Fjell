@@ -64,6 +64,8 @@ internal fun Home(
     temperature: Int?,
     nextAlarm: Long?,
     nowPlaying: NowPlaying?,
+    dotPackages: Set<String>,
+    noDots: Set<String>,
     settings: LauncherSettings,
     actions: LauncherActions,
     onOpenDrawer: () -> Unit,
@@ -178,6 +180,8 @@ internal fun Home(
                     actions = actions,
                     stapelOpensSettings = settings.stapelOpensSettings,
                     searchMic = settings.searchMic,
+                    dotPackages = dotPackages,
+                    noDots = noDots,
                     onOpenDrawer = { openDrawer() },
                     onOpenSettings = { openSettings() },
                 )
