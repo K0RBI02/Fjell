@@ -14,7 +14,7 @@ abstürzt. Sonst wird sofort die letzte gute Version zurückgespielt.
 - [x] Stapel: Suche bietet am Ende „Im Web suchen: …“ an
 - [x] Stapel: Reihe „Zuletzt benutzt“ oben (merkt sich der Launcher selbst, keine Berechtigung)
 - [x] Apps im Stapel ausblenden (und in den Einstellungen wieder einblenden)
-- [ ] Nächster Wecker klein unter Datum/Wetter
+- [x] Nächster Wecker klein unter Datum/Wetter
 - [ ] Popups: sanfte Ausblend-Animation statt hartem Verschwinden
 - [ ] Gitter: leichter Vibrations-Tick, wenn beim Ziehen ein neuer Platz angesteuert wird
 - [ ] Mehr Unit-Tests (Buchstaben-Gruppierung, Icon-Stil-Speicherformat)
@@ -47,3 +47,13 @@ springt weiterhin richtig.
 (Symbol: durchgestrichenes Auge). Die Suche findet sie weiterhin, dort steht dann „Wieder im
 Stapel zeigen“. In den Einstellungen listet der Abschnitt „Ausgeblendet“ alle versteckten
 Apps, ein Tipp blendet sie wieder ein.
+
+**00:40** – Nächster Wecker: Ist innerhalb der nächsten 24 Stunden ein Wecker gestellt, steht
+er hinter Datum und Wetter (z. B. „31 Okt. | 4°C | 🔔 7:00“) mit gezeichnetem Glöckchen.
+Antippen öffnet die Uhr-App. Keine Berechtigung nötig.
+
+**~00:40 – Abbruch:** Die Claude-Sitzung wurde beendet. Die Wecker für die Nachtschicht
+lebten nur in dieser Sitzung und sind mit ihr verschwunden, deshalb ist danach nichts mehr
+passiert. Am Morgen (09:59) habe ich die zuletzt halbfertige Wecker-Funktion geprüft: Build und
+Tests grün, committet. Das Handy war die ganze Nacht nicht per adb erreichbar, installiert
+ist also noch nichts von v2.0.

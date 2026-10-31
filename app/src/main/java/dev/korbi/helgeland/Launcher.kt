@@ -81,9 +81,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -117,7 +120,9 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import java.text.Normalizer
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
@@ -150,6 +155,7 @@ fun Launcher(
     recentKeys: List<String>,
     hiddenKeys: Set<String>,
     temperature: Int?,
+    nextAlarm: Long?,
     iconVersion: Int,
     globalIconStyle: IconStyle,
     iconPacks: List<IconSource>,
@@ -189,6 +195,7 @@ fun Launcher(
                     apps = apps,
                     gridKeys = gridKeys,
                     temperature = temperature,
+                    nextAlarm = nextAlarm,
                     actions = actions,
                     onOpenDrawer = { drawerOpen = true },
                     onOpenSettings = { settingsOpen = true },
@@ -258,6 +265,7 @@ private fun Home(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     temperature: Int?,
+    nextAlarm: Long?,
     actions: LauncherActions,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -307,6 +315,7 @@ private fun Home(
         Clock(
             color = Color.White,
             temperature = temperature,
+            nextAlarm = nextAlarm,
             actions = actions,
             modifier = Modifier.statusBarsPadding().padding(start = 30.dp, top = 64.dp),
         )
@@ -569,7 +578,7 @@ fun StapelIcon(size: Dp) {
 }
 
 @Composable
-private fun Clock(color: Color, temperature: Int?, actions: LauncherActions, modifier: Modifier = Modifier) {
+private fun Clock(color: Color, temperature: Int?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
     val context = LocalView.current.context
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     // Re-keyed on lifecycle so the time is fresh the moment we come back to the foreground.
@@ -583,7 +592,12 @@ private fun Clock(color: Color, temperature: Int?, actions: LauncherActions, mod
     val time = now.format(DateTimeFormatter.ofPattern(timePattern))
     val date = now.format(DateTimeFormatter.ofPattern("d MMM", Locale.getDefault()))
     val subline = if (temperature != null) "$date | $temperature°C" else date
+    // Only alarms within the next day are worth a glance on the home screen.
+    val alarm = nextAlarm
+        ?.takeIf { it - System.currentTimeMillis() in 0..ALARM_HORIZON_MS }
+        ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(timePattern)) }
     val noRipple = remember { MutableInteractionSource() }
+    val sublineStyle = TextStyle(fontFamily = IndieFlower, fontSize = 21.sp, color = color, shadow = softShadow)
 
     Column(modifier) {
         Text(
@@ -591,12 +605,40 @@ private fun Clock(color: Color, temperature: Int?, actions: LauncherActions, mod
             style = TextStyle(fontFamily = IndieFlower, fontSize = 76.sp, color = color, shadow = softShadow),
             modifier = Modifier.clickable(noRipple, null) { actions.openClock() },
         )
-        Text(
-            text = subline,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 21.sp, color = color, shadow = softShadow),
-            modifier = Modifier.padding(start = 6.dp).offset(y = (-18).dp).clickable(noRipple, null) { actions.openCalendar() },
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 6.dp).offset(y = (-18).dp),
+        ) {
+            Text(subline, style = sublineStyle, modifier = Modifier.clickable(noRipple, null) { actions.openCalendar() })
+            if (alarm != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(noRipple, null) { actions.openClock() },
+                ) {
+                    Text(" | ", style = sublineStyle)
+                    Canvas(Modifier.size(15.dp)) { drawBellGlyph(color) }
+                    Text(" $alarm", style = sublineStyle)
+                }
+            }
+        }
     }
+}
+
+private const val ALARM_HORIZON_MS = 24 * 60 * 60 * 1000L
+
+/** A little alarm bell, hand-drawn style. */
+private fun DrawScope.drawBellGlyph(color: Color) {
+    val stroke = size.minDimension * 0.11f
+    val w = size.width
+    val h = size.height
+    val bell = Path().apply {
+        moveTo(w * 0.18f, h * 0.74f)
+        cubicTo(w * 0.26f, h * 0.6f, w * 0.2f, h * 0.18f, w * 0.5f, h * 0.16f)
+        cubicTo(w * 0.8f, h * 0.18f, w * 0.74f, h * 0.6f, w * 0.82f, h * 0.74f)
+        close()
+    }
+    drawPath(bell, color, style = Stroke(stroke, join = StrokeJoin.Round))
+    drawCircle(color, stroke * 0.9f, Offset(w * 0.5f, h * 0.86f))
 }
 
 @Composable
