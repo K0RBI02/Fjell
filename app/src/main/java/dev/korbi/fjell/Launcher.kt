@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -670,13 +669,14 @@ private fun SearchBar(mic: Boolean, modifier: Modifier) {
             .background(bubble, RoundedCornerShape(36))
             .semantics { contentDescription = "Suche" },
     ) {
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         SearchGlyph(glyph)
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(8.dp))
         Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
         if (mic) {
-            // A square as tall as the bar; the tap handler relies on that.
-            Box(Modifier.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) { MicGlyph(glyph) }
+            // Drawn narrower than the bar is tall so "suchen" still fits on a 2-wide bar;
+            // the tap handler gives the mic a full square, which covers this box.
+            Box(Modifier.fillMaxHeight().width(38.dp), contentAlignment = Alignment.Center) { MicGlyph(glyph) }
         } else {
             Spacer(Modifier.width(14.dp))
         }
