@@ -890,7 +890,7 @@ fun SearchGlyph(color: Color) {
 private val INDEX_LETTERS = listOf("#") + ('A'..'Z').map(Char::toString)
 
 /** "Ärzte" -> "A", "2 Player Games" -> "#". */
-private fun sectionLetter(label: String): String {
+internal fun sectionLetter(label: String): String {
     val first = Normalizer.normalize(label.take(1), Normalizer.Form.NFD).firstOrNull()?.uppercaseChar()
     return if (first != null && first in 'A'..'Z') first.toString() else "#"
 }
