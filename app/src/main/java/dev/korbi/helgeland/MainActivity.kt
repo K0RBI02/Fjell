@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val saved = withContext(Dispatchers.IO) { icons.saveCustom(app, uri) }
             if (saved) setIconOverride(app, IconStyle.Custom)
-            else Toast.makeText(this@MainActivity, "Bild konnte nicht geladen werden", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(this@MainActivity, "Couldn’t load that picture", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -243,7 +243,7 @@ class MainActivity : ComponentActivity() {
                 current >= 0 -> slots[current] = null
                 free >= 0 -> slots[free] = app.key
                 else -> {
-                    Toast.makeText(this@MainActivity, "Gitter ist voll – erst eine App entfernen", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@MainActivity, "The grid is full – remove an app first", Toast.LENGTH_SHORT).show()
                     return
                 }
             }
@@ -254,7 +254,7 @@ class MainActivity : ComponentActivity() {
             if (!shown) {
                 setGrid(grid.value.map { if (it == STAPEL_KEY) null else it })
             } else if (!addStapelButton()) {
-                Toast.makeText(this@MainActivity, "Gitter ist voll – erst eine App entfernen", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "The grid is full – remove an app first", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -300,13 +300,13 @@ class MainActivity : ComponentActivity() {
         override fun setSearchShown(shown: Boolean) {
             val placed = if (shown) GridSlots.placeSearch(grid.value, 2, GRID_COLUMNS) else GridSlots.withoutSearch(grid.value)
             if (placed != null) setGrid(placed)
-            else Toast.makeText(this@MainActivity, "Die Suchleiste braucht 2 freie Plätze nebeneinander", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(this@MainActivity, "The search bar needs 2 free slots side by side", Toast.LENGTH_SHORT).show()
         }
 
         override fun setSearchWidth(span: Int) {
             val resized = GridSlots.resizeSearch(grid.value, span, GRID_COLUMNS)
             if (resized != null) setGrid(resized)
-            else Toast.makeText(this@MainActivity, "Dafür ist in keiner Reihe genug Platz frei", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(this@MainActivity, "No row has enough free slots for that", Toast.LENGTH_SHORT).show()
         }
 
         override fun openWebSearch() {

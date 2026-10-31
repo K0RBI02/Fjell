@@ -22,25 +22,25 @@ enum class Scene(
     /** Light sky: status bar icons must be dark. */
     val lightSky: Boolean,
 ) {
-    Mountain(R.drawable.wp_mountain, "Berg", 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
-    Barn(R.drawable.wp_barn, "Scheune", 0.817f, 0.655f, 0.705f, Color.White, DarkInk, lightSky = false),
-    Pole(R.drawable.wp_pole, "Strommast", 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
-    Snow(R.drawable.wp_snow, "Schnee", 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
+    Mountain(R.drawable.wp_mountain, "Mountain", 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
+    Barn(R.drawable.wp_barn, "Barn", 0.817f, 0.655f, 0.705f, Color.White, DarkInk, lightSky = false),
+    Pole(R.drawable.wp_pole, "Pole", 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
+    Snow(R.drawable.wp_snow, "Snow", 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
 
 enum class SwipeDownAction(val label: String) {
-    Notifications("Benachrichtigungen"),
-    Search("Suche"),
-    Nothing("nichts"),
+    Notifications("Notifications"),
+    Search("Search"),
+    Nothing("Nothing"),
 }
 
 enum class DoubleTapAction(val label: String) {
-    Nothing("nichts"),
-    Search("Suche"),
-    Stapel("Stapel"),
-    Settings("Einstellungen"),
+    Nothing("Nothing"),
+    Search("Search"),
+    Stapel("Stack"),
+    Settings("Settings"),
 }
 
 /** Every user-adjustable launcher option in one place. Grid layout and icons live elsewhere. */
