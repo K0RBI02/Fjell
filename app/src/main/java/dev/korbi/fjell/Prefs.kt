@@ -25,14 +25,9 @@ class Prefs(context: Context) {
         get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = sp.edit().putString("recent", value.joinToString("\n")).apply()
 
-    /** What the 3x3 button does: open the stack (default) or the settings. */
-    var stapelOpensSettings: Boolean
-        get() = sp.getBoolean("stapelOpensSettings", false)
-        set(value) = sp.edit().putBoolean("stapelOpensSettings", value).apply()
-
-    var searchMic: Boolean
-        get() = sp.getBoolean("searchMic", true)
-        set(value) = sp.edit().putBoolean("searchMic", value).apply()
+    var settings: LauncherSettings
+        get() = LauncherSettings.load(sp)
+        set(value) = value.save(sp)
 
     var stapelButtonPlaced: Boolean
         get() = sp.getBoolean("stapelButtonPlaced", false)

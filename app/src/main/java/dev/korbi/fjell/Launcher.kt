@@ -21,6 +21,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,7 +50,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -89,6 +89,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -159,8 +160,8 @@ fun Launcher(
     iconVersion: Int,
     globalIconStyle: IconStyle,
     iconPacks: List<IconSource>,
-    stapelOpensSettings: Boolean,
-    searchOptions: SearchBarOptions,
+    settings: LauncherSettings,
+    nowPlaying: NowPlaying?,
     homePresses: Int,
     actions: LauncherActions,
 ) {
@@ -176,31 +177,33 @@ fun Launcher(
 
     val view = LocalView.current
     SideEffect {
-        // Both the sky and the drawer are dark enough for light status bar icons.
+        // The drawer is always dark; on home it depends on the scene's sky.
         val window = (view.context as Activity).window
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = settings.scene.lightSky && !drawerOpen
     }
+    val haptics = if (settings.haptics) LocalHapticFeedback.current else NoHaptics
 
     val menuColors = lightColorScheme(surface = PopupColor, surfaceContainer = PopupColor, onSurface = Ink)
     MaterialTheme(colorScheme = menuColors) {
         CompositionLocalProvider(
             LocalIconVersion provides iconVersion,
             LocalOpenIconPicker provides { app -> iconPickerFor = app },
+            LocalHapticFeedback provides haptics,
         ) {
             Box(Modifier.fillMaxSize()) {
-                WallpaperLayer(blurred = drawerOpen)
+                WallpaperLayer(settings.scene, blurred = drawerOpen)
 
                 val homeAlpha by animateFloatAsState(if (drawerOpen) 0f else 1f, label = "homeAlpha")
                 Home(
                     apps = apps,
                     gridKeys = gridKeys,
-                    temperature = temperature,
-                    nextAlarm = nextAlarm,
+                    temperature = temperature.takeIf { settings.showWeather },
+                    nextAlarm = nextAlarm.takeIf { settings.showAlarm },
+                    nowPlaying = nowPlaying.takeIf { settings.media },
+                    settings = settings,
                     actions = actions,
                     onOpenDrawer = { drawerOpen = true },
                     onOpenSettings = { settingsOpen = true },
-                    stapelOpensSettings = stapelOpensSettings,
-                    searchOptions = searchOptions,
                     modifier = Modifier.alpha(homeAlpha),
                 )
 
@@ -214,6 +217,7 @@ fun Launcher(
                         gridKeys = gridKeys,
                         recentKeys = recentKeys,
                         hiddenKeys = hiddenKeys,
+                        settings = settings,
                         actions = actions,
                         onClose = { drawerOpen = false },
                     )
@@ -224,10 +228,9 @@ fun Launcher(
                     sampleApp = gridKeys.firstNotNullOfOrNull { key -> apps.firstOrNull { it.key == key } } ?: apps.firstOrNull(),
                     globalStyle = globalIconStyle,
                     iconPacks = iconPacks,
+                    settings = settings,
                     stapelShown = MainActivity.STAPEL_KEY in gridKeys,
-                    stapelOpensSettings = stapelOpensSettings,
                     searchShown = GridSlots.SEARCH_KEY in gridKeys,
-                    searchOptions = searchOptions,
                     hiddenApps = apps.filter { it.key in hiddenKeys },
                     actions = actions,
                     onDismiss = { settingsOpen = false },
@@ -252,18 +255,15 @@ fun Launcher(
 }
 
 @Composable
-private fun WallpaperLayer(blurred: Boolean) {
+private fun WallpaperLayer(scene: Scene, blurred: Boolean) {
     val blur by animateDpAsState(if (blurred) 24.dp else 0.dp, tween(350), label = "blur")
     Image(
-        painter = painterResource(R.drawable.wp_mountain),
+        painter = painterResource(scene.res),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = Modifier.fillMaxSize().blur(blur),
     )
 }
-
-/** Where the wallpaper's bottom lilac band starts, as a fraction of the image height. */
-private const val BAND_TOP = 0.6998f
 
 @Composable
 private fun Home(
@@ -271,15 +271,23 @@ private fun Home(
     gridKeys: List<String?>,
     temperature: Int?,
     nextAlarm: Long?,
+    nowPlaying: NowPlaying?,
+    settings: LauncherSettings,
     actions: LauncherActions,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
-    stapelOpensSettings: Boolean,
-    searchOptions: SearchBarOptions,
     modifier: Modifier = Modifier,
 ) {
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val openSettings by rememberUpdatedState(onOpenSettings)
+    val swipeDown by rememberUpdatedState(settings.swipeDown)
+    val doubleTap by rememberUpdatedState(settings.doubleTap)
+    fun run(action: DoubleTapAction) = when (action) {
+        DoubleTapAction.Nothing -> Unit
+        DoubleTapAction.Search -> actions.openWebSearch()
+        DoubleTapAction.Stapel -> openDrawer()
+        DoubleTapAction.Settings -> openSettings()
+    }
     val density = LocalDensity.current
     val threshold = with(density) { 72.dp.toPx() }
     val slots = remember(apps, gridKeys) {
@@ -295,7 +303,8 @@ private fun Home(
             }
         }
     }
-    val wallpaperSize = painterResource(R.drawable.wp_mountain).intrinsicSize
+    val scene = settings.scene
+    val wallpaperSize = painterResource(scene.res).intrinsicSize
 
     BoxWithConstraints(
         modifier = modifier
@@ -310,25 +319,50 @@ private fun Home(
                         when {
                             abs(dx) > abs(dy) -> Unit
                             dy < -threshold -> openDrawer()
-                            dy > threshold -> actions.expandNotifications()
+                            dy > threshold -> when (swipeDown) {
+                                SwipeDownAction.Notifications -> actions.expandNotifications()
+                                SwipeDownAction.Search -> actions.openWebSearch()
+                                SwipeDownAction.Nothing -> Unit
+                            }
                         }
                     },
                 )
             }
-            .pointerInput(Unit) { detectTapGestures(onLongPress = { openSettings() }) },
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { openSettings() },
+                    onDoubleTap = { run(doubleTap) },
+                )
+            },
     ) {
         Clock(
-            color = Color.White,
+            color = scene.ink,
+            large = settings.largeClock,
             temperature = temperature,
             nextAlarm = nextAlarm,
             actions = actions,
             modifier = Modifier.statusBarsPadding().padding(start = 30.dp, top = 64.dp),
         )
 
-        // Mirror ContentScale.Crop to find where the lilac band lands on this screen.
+        // Mirror ContentScale.Crop to find where the scene's bands land on this screen.
         val scale = max(constraints.maxWidth / wallpaperSize.width, constraints.maxHeight / wallpaperSize.height)
         val overflow = (wallpaperSize.height * scale - constraints.maxHeight) / 2
-        val bandTop = wallpaperSize.height * scale * BAND_TOP - overflow
+        fun sceneY(fraction: Float) = wallpaperSize.height * scale * fraction - overflow
+        val bandTop = sceneY(scene.gridTop)
+
+        if (nowPlaying != null) {
+            val top = sceneY(scene.mediaTop)
+            MediaLine(
+                nowPlaying = nowPlaying,
+                color = scene.mediaInk,
+                actions = actions,
+                modifier = Modifier
+                    .offset { IntOffset(0, top.roundToInt()) }
+                    .fillMaxWidth()
+                    .height(with(density) { (sceneY(scene.mediaBottom) - top).toDp() })
+                    .padding(horizontal = 24.dp),
+            )
+        }
         val navBottom = WindowInsets.navigationBars.getBottom(density)
         val gridTop = bandTop + with(density) { 12.dp.toPx() }
         val gridHeight = constraints.maxHeight - gridTop - navBottom - with(density) { 8.dp.toPx() }
@@ -350,8 +384,8 @@ private fun Home(
                 AppGrid(
                     slots = slots,
                     actions = actions,
-                    stapelOpensSettings = stapelOpensSettings,
-                    searchOptions = searchOptions,
+                    stapelOpensSettings = settings.stapelOpensSettings,
+                    searchMic = settings.searchMic,
                     onOpenDrawer = { openDrawer() },
                     onOpenSettings = { openSettings() },
                 )
@@ -395,7 +429,7 @@ private fun AppGrid(
     slots: List<GridItem?>,
     actions: LauncherActions,
     stapelOpensSettings: Boolean,
-    searchOptions: SearchBarOptions,
+    searchMic: Boolean,
     onOpenDrawer: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
@@ -407,7 +441,7 @@ private fun AppGrid(
     val haptics = LocalHapticFeedback.current
     // The gesture handlers below outlive recompositions, so they must read these fresh.
     val opensSettings by rememberUpdatedState(stapelOpensSettings)
-    val searchHasMic by rememberUpdatedState(searchOptions.mic)
+    val searchHasMic by rememberUpdatedState(searchMic)
     val openDrawer by rememberUpdatedState(onOpenDrawer)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
@@ -526,8 +560,8 @@ private fun AppGrid(
                             }
                         }
                         is GridItem.Search -> {
-                            SearchBar(searchOptions, Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
-                            if (menuSlot == i) SearchMenuPopup(span, searchOptions, actions, onDismiss = { menuSlot = null })
+                            SearchBar(searchMic, Modifier.size(cellSize.width * span - (cellSize.width - iconSize), iconSize))
+                            if (menuSlot == i) SearchMenuPopup(span, searchMic, actions, onDismiss = { menuSlot = null })
                         }
                         GridItem.Covered -> Unit
                     }
@@ -537,11 +571,96 @@ private fun AppGrid(
     }
 }
 
-data class SearchBarOptions(val mic: Boolean)
+/** Stands in for the real haptics when vibration is switched off. */
+private object NoHaptics : HapticFeedback {
+    override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit
+}
+
+/**
+ * The "now playing" line in the wallpaper's media band: title and artist in hand
+ * lettering plus ⏮ ⏯ ⏭. Tap the title to play/pause, swipe it to skip, hold to open the player.
+ */
+@Composable
+private fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherActions, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val skipDistance = with(LocalDensity.current) { 48.dp.toPx() }
+    val shadow = if (color == Color.White) softShadow else null
+    val text = listOfNotNull(nowPlaying.title, nowPlaying.artist).joinToString(" – ")
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
+        Text(
+            text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(fontFamily = IndieFlower, fontSize = 18.sp, color = color, shadow = shadow),
+            modifier = Modifier
+                .weight(1f)
+                .pointerInput(Unit) {
+                    var dx = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { dx = 0f },
+                        onHorizontalDrag = { change, amount -> change.consume(); dx += amount },
+                        onDragEnd = {
+                            if (dx < -skipDistance) actions.mediaNext() else if (dx > skipDistance) actions.mediaPrevious()
+                        },
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { actions.mediaPlayPause() },
+                        onLongPress = {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            actions.mediaOpen()
+                        },
+                    )
+                },
+        )
+        MediaButton(color, actions::mediaPrevious) { drawPreviousGlyph(it) }
+        MediaButton(color, actions::mediaPlayPause) { if (nowPlaying.playing) drawPauseGlyph(it) else drawPlayGlyph(it) }
+        MediaButton(color, actions::mediaNext) { drawNextGlyph(it) }
+    }
+}
+
+@Composable
+private fun MediaButton(color: Color, onClick: () -> Unit, glyph: DrawScope.(Color) -> Unit) {
+    val noRipple = remember { MutableInteractionSource() }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(36.dp).clickable(noRipple, null, onClick = onClick),
+    ) {
+        Canvas(Modifier.size(16.dp)) { glyph(color) }
+    }
+}
+
+private fun DrawScope.drawPlayGlyph(color: Color) {
+    val w = size.width
+    val h = size.height
+    drawPath(Path().apply { moveTo(w * 0.22f, h * 0.1f); lineTo(w * 0.9f, h * 0.5f); lineTo(w * 0.22f, h * 0.9f); close() }, color)
+}
+
+private fun DrawScope.drawPauseGlyph(color: Color) {
+    val bar = Size(size.width * 0.24f, size.height * 0.8f)
+    val radius = CornerRadius(bar.width / 3)
+    drawRoundRect(color, Offset(size.width * 0.16f, size.height * 0.1f), bar, radius)
+    drawRoundRect(color, Offset(size.width * 0.6f, size.height * 0.1f), bar, radius)
+}
+
+private fun DrawScope.drawNextGlyph(color: Color) {
+    val w = size.width
+    val h = size.height
+    drawPath(Path().apply { moveTo(w * 0.08f, h * 0.12f); lineTo(w * 0.66f, h * 0.5f); lineTo(w * 0.08f, h * 0.88f); close() }, color)
+    drawRoundRect(color, Offset(w * 0.72f, h * 0.12f), Size(w * 0.16f, h * 0.76f), CornerRadius(w * 0.05f))
+}
+
+private fun DrawScope.drawPreviousGlyph(color: Color) {
+    val w = size.width
+    val h = size.height
+    drawPath(Path().apply { moveTo(w * 0.92f, h * 0.12f); lineTo(w * 0.34f, h * 0.5f); lineTo(w * 0.92f, h * 0.88f); close() }, color)
+    drawRoundRect(color, Offset(w * 0.12f, h * 0.12f), Size(w * 0.16f, h * 0.76f), CornerRadius(w * 0.05f))
+}
 
 /** The home search bar: a long bubble with a magnifier, a hand-written hint and an optional mic. */
 @Composable
-private fun SearchBar(options: SearchBarOptions, modifier: Modifier) {
+private fun SearchBar(mic: Boolean, modifier: Modifier) {
     val dark = isSystemInDarkTheme()
     val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
     val glyph = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
@@ -555,7 +674,7 @@ private fun SearchBar(options: SearchBarOptions, modifier: Modifier) {
         SearchGlyph(glyph)
         Spacer(Modifier.width(10.dp))
         Text("suchen", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
-        if (options.mic) {
+        if (mic) {
             // A square as tall as the bar; the tap handler relies on that.
             Box(Modifier.fillMaxHeight().aspectRatio(1f), contentAlignment = Alignment.Center) { MicGlyph(glyph) }
         } else {
@@ -591,7 +710,7 @@ fun StapelIcon(size: Dp) {
 }
 
 @Composable
-private fun Clock(color: Color, temperature: Int?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
+private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
     val context = LocalView.current.context
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     // Re-keyed on lifecycle so the time is fresh the moment we come back to the foreground.
@@ -615,7 +734,7 @@ private fun Clock(color: Color, temperature: Int?, nextAlarm: Long?, actions: La
     Column(modifier) {
         Text(
             text = time,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 76.sp, color = color, shadow = softShadow),
+            style = TextStyle(fontFamily = IndieFlower, fontSize = if (large) 76.sp else 54.sp, color = color, shadow = softShadow),
             modifier = Modifier.clickable(noRipple, null) { actions.openClock() },
         )
         Row(
@@ -640,7 +759,7 @@ private fun Clock(color: Color, temperature: Int?, nextAlarm: Long?, actions: La
 private const val ALARM_HORIZON_MS = 24 * 60 * 60 * 1000L
 
 /** A little alarm bell, hand-drawn style. */
-private fun DrawScope.drawBellGlyph(color: Color) {
+internal fun DrawScope.drawBellGlyph(color: Color) {
     val stroke = size.minDimension * 0.11f
     val w = size.width
     val h = size.height
@@ -660,17 +779,19 @@ private fun Drawer(
     gridKeys: List<String?>,
     recentKeys: List<String>,
     hiddenKeys: Set<String>,
+    settings: LauncherSettings,
     actions: LauncherActions,
     onClose: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    val showHeaders = settings.drawerSections
     // The stack holds everything not on the home grid; search covers all apps.
     val filtered = remember(apps, gridKeys, hiddenKeys, query) {
         val q = query.trim()
         if (q.isEmpty()) apps.filter { it.key !in gridKeys && it.key !in hiddenKeys } else apps.filter { it.label.contains(q, ignoreCase = true) }
     }
-    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query) {
-        if (query.isNotBlank()) return@remember emptyList()
+    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query, settings.drawerRecent) {
+        if (query.isNotBlank() || !settings.drawerRecent) return@remember emptyList()
         val byKey = apps.associateBy { it.key }
         recentKeys.filter { it !in gridKeys && it !in hiddenKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
     }
@@ -711,10 +832,12 @@ private fun Drawer(
     val sections = remember(filtered, query) {
         if (query.isBlank()) filtered.groupBy { sectionLetter(it.label) } else null
     }
-    val headerIndex = remember(sections, recentApps.isEmpty()) {
+    // Where each letter starts in the list, for the alphabet strip. Without visible headers
+    // that's simply the letter's first app.
+    val headerIndex = remember(sections, recentApps.isEmpty(), showHeaders) {
         // The "zuletzt" header and row sit above the first letter.
         var index = if (recentApps.isEmpty()) 0 else 2
-        sections.orEmpty().mapValues { (_, group) -> index.also { index += group.size + 1 } }
+        sections.orEmpty().mapValues { (_, group) -> index.also { index += group.size + if (showHeaders) 1 else 0 } }
     }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -808,12 +931,12 @@ private fun Drawer(
                         item(key = "recent:row") { RecentRow(recentApps, actions, onLaunch = launchAndClose) }
                     }
                     sections.forEach { (letter, group) ->
-                        item(key = "section:$letter") { SectionHeader(letter) }
+                        if (showHeaders) item(key = "section:$letter") { SectionHeader(letter) }
                         items(group, key = { it.key }) { appRow(it) }
                     }
                 }
             }
-            if (sections != null) {
+            if (sections != null && settings.drawerIndex) {
                 AlphabetIndex(
                     available = sections.keys,
                     current = currentLetter,
