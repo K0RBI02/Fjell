@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
     private val apps = mutableStateOf<List<AppEntry>>(emptyList())
     private val grid = mutableStateOf<List<String?>>(List(GRID_SIZE) { null })
     private val recent = mutableStateOf<List<String>>(emptyList())
+    private val launchCounts = mutableStateOf<Map<String, Int>>(emptyMap())
     private val hidden = mutableStateOf<Set<String>>(emptySet())
     private val temperature = mutableStateOf<Int?>(null)
 
@@ -88,6 +89,7 @@ class MainActivity : ComponentActivity() {
         settings.value = prefs.settings
         grid.value = prefs.grid
         recent.value = prefs.recent
+        launchCounts.value = prefs.launchCounts
         hidden.value = prefs.hidden
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
@@ -111,6 +113,7 @@ class MainActivity : ComponentActivity() {
                 apps = apps.value,
                 gridKeys = grid.value,
                 recentKeys = recent.value,
+                launchCounts = launchCounts.value,
                 hiddenKeys = hidden.value,
                 temperature = temperature.value,
                 nextAlarm = nextAlarm.value,
@@ -220,6 +223,8 @@ class MainActivity : ComponentActivity() {
             if (runCatching { repo.launch(app) }.isFailure) return
             recent.value = (listOf(app.key) + recent.value.filter { it != app.key }).take(RECENT_KEPT)
             prefs.recent = recent.value
+            launchCounts.value = launchCounts.value + (app.key to (launchCounts.value[app.key] ?: 0) + 1)
+            prefs.launchCounts = launchCounts.value
         }
 
         override fun appInfo(app: AppEntry) {

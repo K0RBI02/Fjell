@@ -20,6 +20,15 @@ class Prefs(context: Context) {
         get() = sp.getStringSet("hidden", null)?.toSet() ?: emptySet()
         set(value) = sp.edit().putStringSet("hidden", value).apply()
 
+    /** How often each app was started from the launcher, by [AppEntry.key]. */
+    var launchCounts: Map<String, Int>
+        get() = sp.getString("launchCounts", null)
+            ?.lineSequence()
+            ?.mapNotNull { line -> line.split('\t').takeIf { it.size == 2 }?.let { (key, n) -> n.toIntOrNull()?.let { key to it } } }
+            ?.toMap()
+            ?: emptyMap()
+        set(value) = sp.edit().putString("launchCounts", value.entries.joinToString("\n") { "${it.key}\t${it.value}" }).apply()
+
     /** App keys, most recently launched first. */
     var recent: List<String>
         get() = sp.getString("recent", null)?.split('\n')?.filter { it.isNotBlank() } ?: emptyList()
