@@ -179,12 +179,14 @@ fun Launcher(
         iconPickerFor = null
     }
     BackHandler(drawerOpen) { drawerOpen = false }
+    // The stack and the popups share one look: blurred, dimmed wallpaper with home faded out.
+    val overlayOpen = drawerOpen || settingsOpen || iconPickerFor != null
 
     val view = LocalView.current
     SideEffect {
         // The drawer is always dark; on home it depends on the scene's sky.
         val window = (view.context as Activity).window
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = settings.scene.lightSky && !drawerOpen
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = settings.scene.lightSky && !overlayOpen
     }
     val haptics = if (settings.haptics) LocalHapticFeedback.current else NoHaptics
 
@@ -196,9 +198,9 @@ fun Launcher(
             LocalHapticFeedback provides haptics,
         ) {
             Box(Modifier.fillMaxSize()) {
-                WallpaperLayer(settings.scene, blurred = drawerOpen)
+                WallpaperLayer(settings.scene, blurred = overlayOpen)
 
-                val homeAlpha by animateFloatAsState(if (drawerOpen) 0f else 1f, label = "homeAlpha")
+                val homeAlpha by animateFloatAsState(if (overlayOpen) 0f else 1f, label = "homeAlpha")
                 Home(
                     apps = apps,
                     gridKeys = gridKeys,
