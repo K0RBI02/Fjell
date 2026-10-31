@@ -73,6 +73,17 @@ object GridSlots {
         return result
     }
 
+    /**
+     * How many rows (in halves) to move the grid down so its occupied rows sit centred,
+     * ignoring fully empty rows at the top and bottom. Negative moves it up.
+     */
+    fun centeringShift(occupied: List<Boolean>, columns: Int): Float {
+        val rows = occupied.size / columns
+        val used = (0 until rows).filter { row -> (0 until columns).any { occupied[row * columns + it] } }
+        if (used.isEmpty()) return 0f
+        return (rows - 1 - used.last() - used.first()) / 2f
+    }
+
     private fun List<String?>.fill(start: Int, span: Int): List<String?> = toMutableList().also {
         it[start] = SEARCH_KEY
         for (i in start + 1 until start + span) it[i] = COVERED

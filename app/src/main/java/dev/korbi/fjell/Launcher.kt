@@ -62,6 +62,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -450,9 +451,16 @@ private fun AppGrid(
         val iconSize = minOf(48.dp, cellSize.height * 0.74f, cellSize.width * 0.74f)
         val slotShape = RoundedCornerShape(36)
 
+        // Fully empty rows at the top or bottom don't count: the rest is centred vertically,
+        // in whole or half rows. While dragging, all rows open up so empty ones take drops.
+        val restShift = GridSlots.centeringShift(slots.map { it != null }, columns)
+        val shift by animateFloatAsState(if (dragFrom != null) 0f else restShift, tween(220), label = "gridShift")
+        // Where the grid sat when the current drag began, to keep the dragged icon under the finger.
+        var dragStartShift by remember { mutableFloatStateOf(0f) }
+
         fun slotUnder(from: Int, offset: Offset): Int {
             val col = (from % columns + (offset.x / cellW).roundToInt()).coerceIn(0, columns - 1)
-            val row = (from / columns + (offset.y / cellH).roundToInt()).coerceIn(0, rows - 1)
+            val row = (from / columns + ((offset.y + dragStartShift * cellH) / cellH).roundToInt()).coerceIn(0, rows - 1)
             return row * columns + col
         }
         val hover = dragFrom?.let { slotUnder(it, dragOffset) }
@@ -465,7 +473,7 @@ private fun AppGrid(
             lastHover = hover
         }
 
-        fun Modifier.atSlot(i: Int) = offset { IntOffset(((i % columns) * cellW).roundToInt(), ((i / columns) * cellH).roundToInt()) }
+        fun Modifier.atSlot(i: Int) = offset { IntOffset(((i % columns) * cellW).roundToInt(), ((i / columns + shift) * cellH).roundToInt()) }
 
         if (dragFrom != null) {
             slots.indices.forEach { i ->
@@ -491,7 +499,7 @@ private fun AppGrid(
                         .graphicsLayer {
                             if (isDragged) {
                                 translationX = dragOffset.x
-                                translationY = dragOffset.y
+                                translationY = dragOffset.y + (dragStartShift - shift) * cellH
                                 scaleX = 1.12f
                                 scaleY = 1.12f
                             }
@@ -517,6 +525,7 @@ private fun AppGrid(
                                     Press.Cancel -> Unit
                                     Press.Long -> {
                                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        dragStartShift = shift
                                         dragFrom = i
                                         dragOffset = Offset.Zero
                                         var moved = false

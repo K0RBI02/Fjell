@@ -57,6 +57,39 @@ class GridSlotsTest {
         assertEquals(grid("b", "a"), GridSlots.move(grid("a", "b"), 0, 1, columns))
     }
 
+    private fun rows(vararg used: Boolean) = used.flatMap { List(columns) { _ -> it } }
+
+    @Test
+    fun `a full grid stays put`() {
+        assertEquals(0f, GridSlots.centeringShift(rows(true, true, true), columns))
+    }
+
+    @Test
+    fun `an empty bottom row moves the grid down half a row`() {
+        assertEquals(0.5f, GridSlots.centeringShift(rows(true, true, false), columns))
+    }
+
+    @Test
+    fun `an empty top row moves the grid up half a row`() {
+        assertEquals(-0.5f, GridSlots.centeringShift(rows(false, true, true), columns))
+    }
+
+    @Test
+    fun `a lone top row lands in the middle`() {
+        assertEquals(1f, GridSlots.centeringShift(rows(true, false, false), columns))
+    }
+
+    @Test
+    fun `an empty middle row doesn't count as an edge`() {
+        assertEquals(0f, GridSlots.centeringShift(rows(true, false, true), columns))
+    }
+
+    @Test
+    fun `one app is enough to make a row count`() {
+        val occupied = listOf(true, false, false, false) + List(8) { false }
+        assertEquals(1f, GridSlots.centeringShift(occupied, columns))
+    }
+
     @Test
     fun `widening keeps the start when the row has room`() {
         val slots = grid(SEARCH_KEY, COVERED, null, null)
