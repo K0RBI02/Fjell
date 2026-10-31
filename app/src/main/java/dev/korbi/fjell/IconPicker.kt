@@ -8,10 +8,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,7 +67,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -247,14 +244,13 @@ private val SheetColor = Color(0x99101422)
 /** Downward fling speed (px/s) that closes the sheet even if it hasn't been dragged far. */
 private const val FLING_TO_CLOSE = 1800f
 
-/** Shows [content] (a [FjellPopup]) while [visible], growing in from the bottom and shrinking back out. */
+/** Shows [content] (a [FjellPopup]) while [visible], sliding up from the bottom edge and back down. */
 @Composable
 fun PopupTransition(visible: Boolean, content: @Composable () -> Unit) {
-    val origin = TransformOrigin(0.5f, 1f)
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.94f, transformOrigin = origin),
-        exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.94f, transformOrigin = origin),
+        enter = slideInVertically(tween(300)) { it },
+        exit = slideOutVertically(tween(220)) { it },
     ) { content() }
 }
 
