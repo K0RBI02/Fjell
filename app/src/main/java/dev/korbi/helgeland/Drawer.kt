@@ -61,6 +61,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -87,6 +90,7 @@ internal fun Drawer(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     val searchFocus = remember { FocusRequester() }
+    val searchLabel = stringResource(R.string.cd_search)
     LaunchedEffect(focusSearch) { if (focusSearch) searchFocus.requestFocus() }
     val calculation = remember(query) { Calculator.evaluate(query)?.let(Calculator::format) }
     // Contacts arrive a moment later (and only with the option and permission on).
@@ -201,6 +205,7 @@ internal fun Drawer(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp)
                 .focusRequester(searchFocus)
+                .semantics { contentDescription = searchLabel }
                 .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
                 .padding(horizontal = 22.dp, vertical = 14.dp),
             decorationBox = { field ->
@@ -416,6 +421,8 @@ private fun AlphabetIndex(
         verticalArrangement = Arrangement.SpaceEvenly,
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
+            // A touch strip for sighted users; TalkBack users scroll the list instead.
+            .clearAndSetSemantics {}
             .width(30.dp)
             .fillMaxHeight()
             .pointerInput(Unit) {

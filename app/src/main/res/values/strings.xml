@@ -112,4 +112,22 @@
     <string name="contacts_in_search">Contacts in search</string>
     <string name="contacts_in_search_hint">after apps and calculations, before the web</string>
     <string name="toast_copied">Copied %1$s</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next track</string>
+    <string name="cd_close">Close</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_alarm">Next alarm</string>
+    <string name="cd_new_notifications">new notifications</string>
+    <string name="cd_voice_search">Voice search</string>
+    <string name="cd_app_menu">Options</string>
+    <string name="sky_clear">clear</string>
+    <string name="sky_clear_night">clear night</string>
+    <string name="sky_partly_cloudy">partly cloudy</string>
+    <string name="sky_cloudy">cloudy</string>
+    <string name="sky_fog">fog</string>
+    <string name="sky_rain">rain</string>
+    <string name="sky_snow">snow</string>
+    <string name="sky_thunder">thunderstorm</string>
+    <string name="cd_open">Open</string>
 </resources>

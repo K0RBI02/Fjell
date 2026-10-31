@@ -27,6 +27,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,18 +65,23 @@ internal fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherAc
             )
         }
         Crossfade(nowPlaying.playing, animationSpec = tween(180), label = "playPause") { playing ->
-            MediaButton(color, actions::mediaPlayPause) { if (playing) drawPauseGlyph(it) else drawPlayGlyph(it) }
+            MediaButton(color, stringResource(if (playing) R.string.cd_pause else R.string.cd_play), actions::mediaPlayPause) {
+                if (playing) drawPauseGlyph(it) else drawPlayGlyph(it)
+            }
         }
-        MediaButton(color, actions::mediaNext) { drawNextGlyph(it) }
+        MediaButton(color, stringResource(R.string.cd_next), actions::mediaNext) { drawNextGlyph(it) }
     }
 }
 
 @Composable
-private fun MediaButton(color: Color, onClick: () -> Unit, glyph: DrawScope.(Color) -> Unit) {
+private fun MediaButton(color: Color, label: String, onClick: () -> Unit, glyph: DrawScope.(Color) -> Unit) {
     val noRipple = remember { MutableInteractionSource() }
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.size(36.dp).clickable(noRipple, null, onClick = onClick),
+        modifier = Modifier
+            .size(36.dp)
+            .clickable(noRipple, null, role = Role.Button, onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label },
     ) {
         Canvas(Modifier.size(16.dp)) { glyph(color) }
     }

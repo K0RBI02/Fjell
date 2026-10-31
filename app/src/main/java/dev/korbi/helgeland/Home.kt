@@ -1,6 +1,7 @@
 package dev.korbi.helgeland
 
 import android.text.format.DateFormat
+import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -237,7 +238,8 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
             Text(subline, style = sublineStyle, modifier = Modifier.clickable(noRipple, null) { actions.openCalendar() })
             if (weather != null) {
                 Spacer(Modifier.width(5.dp))
-                Canvas(Modifier.size(17.dp).semantics { contentDescription = weather.sky.name }) { drawSkyGlyph(weather.sky, color) }
+                val skyLabel = stringResource(skyLabel(weather.sky))
+                Canvas(Modifier.size(17.dp).semantics { contentDescription = skyLabel }) { drawSkyGlyph(weather.sky, color) }
             }
             if (alarm != null) {
                 Row(
@@ -245,7 +247,8 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
                     modifier = Modifier.clickable(noRipple, null) { actions.openClock() },
                 ) {
                     Text(" | ", style = sublineStyle)
-                    Canvas(Modifier.size(15.dp)) { drawBellGlyph(color) }
+                    val alarmLabel = stringResource(R.string.cd_alarm)
+                    Canvas(Modifier.size(15.dp).semantics { contentDescription = alarmLabel }) { drawBellGlyph(color) }
                     Text(" $alarm", style = sublineStyle)
                 }
             }
@@ -254,6 +257,18 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
 }
 
 private const val ALARM_HORIZON_MS = 24 * 60 * 60 * 1000L
+
+@StringRes
+private fun skyLabel(sky: Sky): Int = when (sky) {
+    Sky.Clear -> R.string.sky_clear
+    Sky.ClearNight -> R.string.sky_clear_night
+    Sky.PartlyCloudy -> R.string.sky_partly_cloudy
+    Sky.Cloudy -> R.string.sky_cloudy
+    Sky.Fog -> R.string.sky_fog
+    Sky.Rain -> R.string.sky_rain
+    Sky.Snow -> R.string.sky_snow
+    Sky.Thunder -> R.string.sky_thunder
+}
 
 /** The current sky as a small line glyph, in the same hand as the bell. */
 private fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
