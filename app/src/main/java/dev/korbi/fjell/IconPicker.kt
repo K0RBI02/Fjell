@@ -1,8 +1,13 @@
 package dev.korbi.fjell
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,7 +41,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -51,7 +55,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -90,18 +93,15 @@ private val BUILT_IN_STYLES = listOf(
 
 /**
  * A rounded card floating over the home screen, from below the clock down to the
- * bottom edge. Tapping outside it dismisses.
+ * bottom edge. Tapping outside it dismisses. Callers animate it in and out with
+ * [PopupTransition].
  */
 @Composable
 fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val noRipple = remember { MutableInteractionSource() }
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    val appear by animateFloatAsState(if (shown) 1f else 0f, tween(220), label = "popup")
     Box(
         Modifier
             .fillMaxSize()
-            .graphicsLayer { alpha = appear }
             .background(Color(0x40000000))
             .clickable(noRipple, null, onClick = onDismiss)
             .statusBarsPadding()
@@ -112,12 +112,6 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    val scale = 0.94f + 0.06f * appear
-                    scaleX = scale
-                    scaleY = scale
-                    transformOrigin = TransformOrigin(0.5f, 1f)
-                }
                 .clip(RoundedCornerShape(34.dp))
                 // Swallow taps so they don't reach the dismiss layer behind.
                 .clickable(noRipple, null) {},
@@ -134,6 +128,17 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
             content()
         }
     }
+}
+
+/** Shows [content] (a [FjellPopup]) while [visible], growing in from the bottom and shrinking back out. */
+@Composable
+fun PopupTransition(visible: Boolean, content: @Composable () -> Unit) {
+    val origin = TransformOrigin(0.5f, 1f)
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.94f, transformOrigin = origin),
+        exit = fadeOut(tween(160)) + scaleOut(tween(160), targetScale = 0.94f, transformOrigin = origin),
+    ) { content() }
 }
 
 /** Launcher settings: the default icon style and the 3x3 button. */

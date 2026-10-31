@@ -219,7 +219,7 @@ fun Launcher(
                     )
                 }
             }
-            if (settingsOpen) {
+            PopupTransition(settingsOpen) {
                 SettingsPopup(
                     sampleApp = gridKeys.firstNotNullOfOrNull { key -> apps.firstOrNull { it.key == key } } ?: apps.firstOrNull(),
                     globalStyle = globalIconStyle,
@@ -233,14 +233,19 @@ fun Launcher(
                     onDismiss = { settingsOpen = false },
                 )
             }
-            iconPickerFor?.let { app ->
-                IconPickerPopup(
-                    app = app,
-                    globalStyle = globalIconStyle,
-                    iconPacks = iconPacks,
-                    actions = actions,
-                    onClose = { iconPickerFor = null },
-                )
+            // Keep the last app around so the picker can still render while it animates out.
+            var pickerApp by remember { mutableStateOf<AppEntry?>(null) }
+            iconPickerFor?.let { pickerApp = it }
+            PopupTransition(iconPickerFor != null) {
+                pickerApp?.let { app ->
+                    IconPickerPopup(
+                        app = app,
+                        globalStyle = globalIconStyle,
+                        iconPacks = iconPacks,
+                        actions = actions,
+                        onClose = { iconPickerFor = null },
+                    )
+                }
             }
         }
     }
