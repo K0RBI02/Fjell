@@ -153,6 +153,7 @@ fun Launcher(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     recentKeys: List<String>,
+    launchCounts: Map<String, Int>,
     hiddenKeys: Set<String>,
     temperature: Int?,
     nextAlarm: Long?,
@@ -215,6 +216,7 @@ fun Launcher(
                         apps = apps,
                         gridKeys = gridKeys,
                         recentKeys = recentKeys,
+                        launchCounts = launchCounts,
                         hiddenKeys = hiddenKeys,
                         settings = settings,
                         actions = actions,
@@ -767,6 +769,7 @@ private fun Drawer(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     recentKeys: List<String>,
+    launchCounts: Map<String, Int>,
     hiddenKeys: Set<String>,
     settings: LauncherSettings,
     actions: LauncherActions,
@@ -818,8 +821,13 @@ private fun Drawer(
         close()
     }
     // Letter sections only while browsing; a search result list stays flat.
-    val sections = remember(filtered, query) {
-        if (query.isBlank()) filtered.groupBy { sectionLetter(it.label) } else null
+    // Within a letter, often-used apps come first; the sort is stable, so ties stay alphabetical.
+    val sections = remember(filtered, query, launchCounts) {
+        if (query.isBlank()) {
+            filtered.groupBy { sectionLetter(it.label) }.mapValues { (_, group) -> group.sortedByDescending { launchCounts[it.key] ?: 0 } }
+        } else {
+            null
+        }
     }
     // Where each letter starts in the list, for the alphabet strip. Without visible headers
     // that's simply the letter's first app.
