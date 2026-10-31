@@ -67,7 +67,7 @@ fun SettingsPopup(
     val update = actions::updateSettings
 
     HelgelandPopup(onDismiss) {
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxWidth()) {
             val current = page
             PopupHeader(current?.title ?: "Settings", onBack = if (current != null) ({ page = null }) else null)
             LazyColumn(
@@ -281,12 +281,12 @@ private fun LazyListScope.generalPage(settings: LauncherSettings, actions: Launc
             "Set as default launcher",
             maxLines = 1,
             textAlign = TextAlign.Center,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = Cream),
+            style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = PopupText),
             modifier = Modifier
                 .padding(start = 22.dp, end = 22.dp, top = 14.dp)
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(50))
-                .background(Night)
+                .background(PopupText.copy(alpha = 0.14f))
                 .clickable(onClick = actions::openHomeSettings)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         )
@@ -313,7 +313,7 @@ private fun ChoiceRow(label: String, selected: Boolean, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 10.dp),
     ) {
-        Text(label, style = rowStyle.copy(color = if (selected) Ink else Muted), modifier = Modifier.weight(1f))
+        Text(label, style = rowStyle.copy(color = if (selected) PopupText else Muted), modifier = Modifier.weight(1f))
         if (selected) Text("✓", style = rowStyle)
     }
 }

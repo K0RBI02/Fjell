@@ -5,7 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.compose.ui.graphics.Color
 
 /**
- * The four Sør-Helgeland scenes. Positions are fractions of the image height:
+ * The three Sør-Helgeland scenes to choose from. Positions are fractions of the image height:
  * [gridTop] is where the calm bottom area for the app grid starts, and the media
  * line sits between [mediaTop] and [mediaBottom] without covering any motif.
  */
@@ -23,7 +23,6 @@ enum class Scene(
     val lightSky: Boolean,
 ) {
     Mountain(R.drawable.wp_mountain, "Mountain", 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
-    Barn(R.drawable.wp_barn, "Barn", 0.817f, 0.655f, 0.705f, Color.White, DarkInk, lightSky = false),
     Pole(R.drawable.wp_pole, "Pole", 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
     Snow(R.drawable.wp_snow, "Snow", 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
 }
