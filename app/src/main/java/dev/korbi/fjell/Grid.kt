@@ -1,5 +1,6 @@
 package dev.korbi.fjell
 
+import androidx.compose.ui.res.stringResource
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -252,16 +253,17 @@ private fun SearchBar(mic: Boolean, modifier: Modifier) {
     val dark = isSystemInDarkTheme()
     val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
     val glyph = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
+    val description = stringResource(R.string.cd_search)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .background(bubble, RoundedCornerShape(36))
-            .semantics { contentDescription = "Search" },
+            .semantics { contentDescription = description },
     ) {
         Spacer(Modifier.width(12.dp))
         SearchGlyph(glyph)
         Spacer(Modifier.width(8.dp))
-        Text("search", maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
+        Text(stringResource(R.string.search_hint), maxLines = 1, style = TextStyle(fontFamily = IndieFlower, fontSize = 19.sp, color = glyph.copy(alpha = 0.6f)), modifier = Modifier.weight(1f))
         if (mic) {
             // Drawn narrower than the bar is tall so the "search" hint still fits on a 2-wide bar;
             // the tap handler gives the mic a full square, which covers this box.
@@ -284,11 +286,12 @@ fun StapelIcon(size: Dp) {
     val dark = isSystemInDarkTheme()
     val bubble = if (dark) Color(0xFF1B1B1F) else Color(0xFFF3EFF4)
     val dot = if (dark) Color(0xFFF3EFF4) else Color(0xFF1B1B1F)
+    val description = stringResource(R.string.cd_all_apps)
     Canvas(
         Modifier
             .size(size)
             .background(bubble, RoundedCornerShape(36))
-            .semantics { contentDescription = "All apps" },
+            .semantics { contentDescription = description },
     ) {
         val step = this.size.minDimension * 0.18f
         val radius = this.size.minDimension * 0.045f

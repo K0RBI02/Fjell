@@ -1,5 +1,6 @@
 package dev.korbi.fjell
 
+import androidx.annotation.StringRes
 import android.content.SharedPreferences
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -12,7 +13,7 @@ import androidx.compose.ui.graphics.Color
  */
 enum class Scene(
     @DrawableRes val res: Int,
-    val label: String,
+    @StringRes val label: Int,
     val gridTop: Float,
     val mediaTop: Float,
     val mediaBottom: Float,
@@ -23,9 +24,9 @@ enum class Scene(
     /** Light sky: status bar icons must be dark. */
     val lightSky: Boolean,
 ) {
-    Mountain(R.drawable.wp_mountain, "Mountain", 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
-    Pole(R.drawable.wp_pole, "Pole", 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
-    Snow(R.drawable.wp_snow, "Snow", 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
+    Mountain(R.drawable.wp_mountain, R.string.scene_mountain, 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
+    Pole(R.drawable.wp_pole, R.string.scene_pole, 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
+    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
@@ -33,17 +34,17 @@ private val DarkInk get() = Color(0xFF2E3550)
 /** The active scene, for parts (like popup sheets) that redraw the wallpaper themselves. */
 val LocalScene = staticCompositionLocalOf { Scene.Mountain }
 
-enum class SwipeDownAction(val label: String) {
-    Notifications("Notifications"),
-    Search("Search"),
-    Nothing("Nothing"),
+enum class SwipeDownAction(@StringRes val label: Int) {
+    Notifications(R.string.action_notifications),
+    Search(R.string.action_search),
+    Nothing(R.string.action_nothing),
 }
 
-enum class DoubleTapAction(val label: String) {
-    Nothing("Nothing"),
-    Search("Search"),
-    Stapel("Stack"),
-    Settings("Settings"),
+enum class DoubleTapAction(@StringRes val label: Int) {
+    Nothing(R.string.action_nothing),
+    Search(R.string.action_search),
+    Stapel(R.string.action_stack),
+    Settings(R.string.settings),
 }
 
 /** Every user-adjustable launcher option in one place. Grid layout and icons live elsewhere. */

@@ -1,5 +1,6 @@
 package dev.korbi.fjell
 
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -104,16 +105,16 @@ internal val hintStyle = TextStyle(fontFamily = Lato, fontSize = 13.sp, color = 
 
 /** Captions for the bubble row in the settings. */
 internal val SHORT_LABELS = mapOf(
-    IconStyle.Original to "Original",
-    IconStyle.Grayscale to "Gray",
-    IconStyle.Mono to "Simple",
+    IconStyle.Original to R.string.style_original,
+    IconStyle.Grayscale to R.string.style_gray,
+    IconStyle.Mono to R.string.style_simple,
 )
 
 /** The styles everyone can pick, in display order, with a one-line explanation each. */
 internal val BUILT_IN_STYLES = listOf(
-    Triple(IconStyle.Original, "Original", "the colourful app icon, framed in the bubble"),
-    Triple(IconStyle.Grayscale, "Original grayscale", "the app icon, desaturated"),
-    Triple(IconStyle.Mono, "Simple app icon", "the plain icon many apps ship with"),
+    Triple(IconStyle.Original, R.string.style_original_long, R.string.style_original_hint),
+    Triple(IconStyle.Grayscale, R.string.style_gray_long, R.string.style_gray_hint),
+    Triple(IconStyle.Mono, R.string.style_simple_long, R.string.style_simple_hint),
 )
 
 /**
@@ -392,15 +393,15 @@ fun IconPickerPopup(
             return@FjellPopup
         }
         Column(Modifier.fillMaxWidth()) {
-            PopupHeader("Icon for ${app.label}")
+            PopupHeader(stringResource(R.string.icon_for, app.label))
             LazyColumn(
                 contentPadding = PaddingValues(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {
                     StyleCard(
-                        label = "Default",
-                        hint = "as set in settings",
+                        label = stringResource(R.string.icon_default),
+                        hint = stringResource(R.string.icon_default_hint),
                         selected = current == null,
                         preview = { StylePreview(app, globalStyle, actions) },
                         onClick = { actions.setAppIconStyle(app, null); onClose() },
@@ -416,8 +417,8 @@ fun IconPickerPopup(
                 )
                 item {
                     StyleCard(
-                        label = "Own picture",
-                        hint = "pick from the gallery",
+                        label = stringResource(R.string.icon_own_picture),
+                        hint = stringResource(R.string.icon_own_picture_hint),
                         selected = current == IconStyle.Custom,
                         preview = if (current == IconStyle.Custom) ({ StylePreview(app, IconStyle.Custom, actions) }) else null,
                         onClick = { actions.pickCustomIcon(app); onClose() },
@@ -440,12 +441,12 @@ private fun LazyListScope.styleRows(
     onSelect: (IconStyle) -> Unit,
     onOpenPack: ((String) -> Unit)?,
 ) {
-    item { SectionTitle("Styles") }
+    item { SectionTitle(stringResource(R.string.styles)) }
     BUILT_IN_STYLES.forEach { (style, label, hint) ->
         item {
             StyleCard(
-                label = label,
-                hint = hint,
+                label = stringResource(label),
+                hint = stringResource(hint),
                 selected = selected == style,
                 preview = app?.let { { StylePreview(it, style, actions) } },
                 onClick = { onSelect(style) },
@@ -453,13 +454,13 @@ private fun LazyListScope.styleRows(
         }
     }
     if (iconPacks.isNotEmpty()) {
-        item { SectionTitle("Installed icon packs") }
+        item { SectionTitle(stringResource(R.string.installed_packs)) }
         iconPacks.forEach { pack ->
             val style = IconStyle.Pack(pack.pkg)
             item {
                 StyleCard(
                     label = pack.label,
-                    hint = if (onOpenPack != null) "pick an icon from the pack" else "matching icon, automatically",
+                    hint = if (onOpenPack != null) stringResource(R.string.pack_pick_hint) else stringResource(R.string.pack_auto_hint),
                     selected = selected == style || (selected as? IconStyle.PackIcon)?.pkg == pack.pkg,
                     chevron = onOpenPack != null,
                     preview = app?.let { { StylePreview(it, style, actions) } },
@@ -470,7 +471,7 @@ private fun LazyListScope.styleRows(
     }
 }
 
-/** Every icon in one pack, searchable; "Automatic" keeps the pack's own match. */
+/** Every icon in one pack, searchable; stringResource(R.string.automatic) keeps the pack's own match. */
 @Composable
 private fun PackBrowser(
     app: AppEntry,
@@ -501,7 +502,7 @@ private fun PackBrowser(
                 .background(Card, RoundedCornerShape(50))
                 .padding(horizontal = 22.dp, vertical = 14.dp),
             decorationBox = { field ->
-                if (query.isEmpty()) Text("Search icons", style = rowStyle.copy(color = Muted))
+                if (query.isEmpty()) Text(stringResource(R.string.search_icons), style = rowStyle.copy(color = Muted))
                 field()
             },
         )
@@ -513,15 +514,15 @@ private fun PackBrowser(
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 StyleCard(
-                    label = "Automatic",
-                    hint = "the icon ${pack.label} provides for ${app.label}",
+                    label = stringResource(R.string.automatic),
+                    hint = stringResource(R.string.pack_auto_long_hint, pack.label, app.label),
                     selected = current == IconStyle.Pack(pack.pkg),
                     preview = { StylePreview(app, IconStyle.Pack(pack.pkg), actions) },
                     onClick = { onPick(IconStyle.Pack(pack.pkg)) },
                 )
             }
             if (names == null) {
-                item(span = { GridItemSpan(maxLineSpan) }) { Text("loading …", style = hintStyle, modifier = Modifier.padding(8.dp)) }
+                item(span = { GridItemSpan(maxLineSpan) }) { Text(stringResource(R.string.loading), style = hintStyle, modifier = Modifier.padding(8.dp)) }
             }
             items(filtered, key = { it }) { name ->
                 val style = IconStyle.PackIcon(pack.pkg, name)
