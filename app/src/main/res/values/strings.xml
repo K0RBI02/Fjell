@@ -130,4 +130,5 @@
     <string name="sky_snow">snow</string>
     <string name="sky_thunder">thunderstorm</string>
     <string name="cd_open">Open</string>
+    <string name="cd_call">Call %1$s</string>
 </resources>

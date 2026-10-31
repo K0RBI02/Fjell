@@ -71,6 +71,14 @@ class MainActivity : ComponentActivity() {
         if (!granted) actions.updateSettings { it.copy(searchContacts = false) }
     }
 
+    /** The number waiting for the call permission dialog to come back. */
+    private var pendingCall: String? = null
+    private val callPermission: ActivityResultLauncher<String> = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val number = pendingCall ?: return@registerForActivityResult
+        pendingCall = null
+        call(number, direct = granted)
+    }
+
     private val pickPicture = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         val app = pendingIconApp ?: return@registerForActivityResult
         pendingIconApp = null
@@ -302,6 +310,16 @@ class MainActivity : ComponentActivity() {
             startSafely(Intent(Intent.ACTION_VIEW, contact.uri))
         }
 
+        override fun callContact(contact: ContactHit) {
+            val number = contact.number ?: return
+            if (checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                call(number, direct = true)
+            } else {
+                pendingCall = number
+                callPermission.launch(Manifest.permission.CALL_PHONE)
+            }
+        }
+
         override fun copyToClipboard(text: String) {
             getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(text, text))
             Toast.makeText(this@MainActivity, getString(R.string.toast_copied, text), Toast.LENGTH_SHORT).show()
@@ -429,6 +447,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun call(number: String, direct: Boolean) {
+        val uri = Uri.fromParts("tel", number, null)
+        if (!direct || !startSafely(Intent(Intent.ACTION_CALL, uri))) startSafely(Intent(Intent.ACTION_DIAL, uri))
+    }
+
     /** False if nothing on the phone handles [intent]. */
     private fun startSafely(intent: Intent): Boolean =
         runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
@@ -468,6 +491,8 @@ interface LauncherActions {
     fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
     suspend fun searchContacts(query: String): List<ContactHit>
     fun openContact(contact: ContactHit)
+    /** Calls straight away once the call permission is granted; otherwise opens the dialer with the number. */
+    fun callContact(contact: ContactHit)
     fun copyToClipboard(text: String)
     fun lockScreen()
     fun hasMediaAccess(): Boolean

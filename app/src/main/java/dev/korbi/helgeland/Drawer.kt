@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -49,8 +50,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -61,6 +65,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -254,7 +259,13 @@ internal fun Drawer(
                         item(key = "calc") { CalculationRow(calculation) { actions.copyToClipboard(calculation) } }
                     }
                     items(contacts, key = { "contact:" + it.uri }) { contact ->
-                        ContactRow(contact) {
+                        ContactRow(
+                            contact,
+                            onCall = {
+                                actions.callContact(contact)
+                                close()
+                            },
+                        ) {
                             actions.openContact(contact)
                             close()
                         }
@@ -322,18 +333,53 @@ private fun CalculationRow(result: String, onClick: () -> Unit) {
     }
 }
 
+/** A contact hit: tap the row to open the contact, the handset on the right to call. */
 @Composable
-private fun ContactRow(contact: ContactHit, onClick: () -> Unit) {
+private fun ContactRow(contact: ContactHit, onCall: () -> Unit, onClick: () -> Unit) {
     SearchExtraRow(onClick = onClick, leading = {
         Text(contact.name.take(1).uppercase(), style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Color.White))
     }) {
-        Text(contact.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White))
+        Text(contact.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White), modifier = Modifier.weight(1f))
+        if (contact.number != null) {
+            val callLabel = stringResource(R.string.cd_call, contact.name)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(36))
+                    .clickable(role = Role.Button, onClickLabel = callLabel, onClick = onCall)
+                    .semantics { contentDescription = callLabel },
+            ) {
+                Canvas(Modifier.size(20.dp)) { drawHandsetGlyph(Color.White) }
+            }
+        }
     }
+}
+
+/** A classic telephone handset, in the launcher's line style. */
+private fun DrawScope.drawHandsetGlyph(color: Color) {
+    val w = size.width
+    val h = size.height
+    val handset = Path().apply {
+        moveTo(w * 0.22f, h * 0.1f)
+        lineTo(w * 0.36f, h * 0.1f)
+        lineTo(w * 0.44f, h * 0.3f)
+        lineTo(w * 0.34f, h * 0.4f)
+        cubicTo(w * 0.42f, h * 0.56f, w * 0.48f, h * 0.62f, w * 0.62f, h * 0.68f)
+        lineTo(w * 0.72f, h * 0.58f)
+        lineTo(w * 0.9f, h * 0.66f)
+        lineTo(w * 0.9f, h * 0.8f)
+        cubicTo(w * 0.9f, h * 0.88f, w * 0.84f, h * 0.92f, w * 0.76f, h * 0.9f)
+        cubicTo(w * 0.42f, h * 0.84f, w * 0.14f, h * 0.56f, w * 0.1f, h * 0.24f)
+        cubicTo(w * 0.08f, h * 0.16f, w * 0.14f, h * 0.1f, w * 0.22f, h * 0.1f)
+        close()
+    }
+    drawPath(handset, color, style = Stroke(size.minDimension * 0.09f, join = StrokeJoin.Round))
 }
 
 /** A search result that isn't an app: a faint bubble with a glyph or letter, then the text. */
 @Composable
-private fun SearchExtraRow(onClick: () -> Unit, leading: @Composable () -> Unit, text: @Composable () -> Unit) {
+private fun SearchExtraRow(onClick: () -> Unit, leading: @Composable () -> Unit, text: @Composable RowScope.() -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
