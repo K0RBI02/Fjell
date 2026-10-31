@@ -2,9 +2,12 @@ package dev.korbi.fjell
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.SearchManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
@@ -21,6 +24,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,6 +41,12 @@ class MainActivity : ComponentActivity() {
     private val recent = mutableStateOf<List<String>>(emptyList())
     private val hidden = mutableStateOf<Set<String>>(emptySet())
     private val temperature = mutableStateOf<Int?>(null)
+
+    /** Trigger time of the next alarm, if one is set; the UI decides whether it's close enough to show. */
+    private val nextAlarm = mutableStateOf<Long?>(null)
+    private val alarmChanged = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = refreshNextAlarm()
+    }
     private var weatherFetchedAt = 0L
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
     private val iconPacks = mutableStateOf<List<IconSource>>(emptyList())
@@ -87,6 +97,8 @@ class MainActivity : ComponentActivity() {
         }
 
         reload()
+        // System broadcast, so it still arrives with NOT_EXPORTED; recent Android insists on a flag.
+        ContextCompat.registerReceiver(this, alarmChanged, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         unwatch = repo.watch(
             onRemoved = { pkg, user -> setGrid(grid.value.map { key -> if (key != null && AppEntry.isOf(key, pkg, user.hashCode())) null else key }) },
             onChange = { reload() },
@@ -99,6 +111,7 @@ class MainActivity : ComponentActivity() {
                 recentKeys = recent.value,
                 hiddenKeys = hidden.value,
                 temperature = temperature.value,
+                nextAlarm = nextAlarm.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
@@ -118,6 +131,11 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshWeather()
+        refreshNextAlarm()
+    }
+
+    private fun refreshNextAlarm() {
+        nextAlarm.value = getSystemService(AlarmManager::class.java).nextAlarmClock?.triggerTime
     }
 
     private fun refreshWeather(force: Boolean = false) {
@@ -133,6 +151,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(alarmChanged)
         unwatch?.invoke()
         super.onDestroy()
     }
