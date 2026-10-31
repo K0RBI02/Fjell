@@ -17,10 +17,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
-
+      # The runner image ships an Android SDK; only the platform we compile against is missing.
+      # (android-actions/setup-android@v3 fails: it still asks for the removed "tools" package.)
       - name: Install the Android platform this project compiles against
-        run: sdkmanager "platforms;android-37.2"
+        run: |
+          SDKMANAGER=$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | sort -V | tail -1)
+          yes | "$SDKMANAGER" --licenses > /dev/null
+          "$SDKMANAGER" --install "platforms;android-37.2"
 
       - uses: gradle/actions/setup-gradle@v4
 
