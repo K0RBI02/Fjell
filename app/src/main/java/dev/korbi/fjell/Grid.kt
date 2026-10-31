@@ -42,7 +42,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -109,6 +113,9 @@ internal fun AppGrid(
     val openSearch by rememberUpdatedState(onOpenSearch)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
+    val openLabel = stringResource(R.string.cd_open)
+    val menuLabel = stringResource(R.string.cd_app_menu)
+    val voiceLabel = stringResource(R.string.cd_voice_search)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cellW = constraints.maxWidth / columns.toFloat()
         val cellH = constraints.maxHeight / rows.toFloat()
@@ -222,6 +229,25 @@ internal fun AppGrid(
                                     }
                                 }
                             }
+                        }
+                        // TalkBack can't perform the custom gestures above, so offer them as actions.
+                        .semantics(mergeDescendants = true) {
+                            onClick(openLabel) {
+                                when (item) {
+                                    is GridItem.App -> actions.launch(item.entry)
+                                    GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
+                                    is GridItem.Search -> openSearch()
+                                    GridItem.Covered -> Unit
+                                }
+                                true
+                            }
+                            onLongClick(menuLabel) {
+                                menuSlot = i
+                                true
+                            }
+                            if (item is GridItem.Search && searchHasMic) {
+                                customActions = listOf(CustomAccessibilityAction(voiceLabel) { actions.openVoiceSearch(); true })
+                            }
                         },
                 ) {
                     when (item) {
@@ -261,8 +287,10 @@ internal fun AppGrid(
 /** A small dot in the wallpaper's barn red, ringed in white so it reads on any bubble. */
 @Composable
 private fun NotificationDot(modifier: Modifier = Modifier) {
+    val description = stringResource(R.string.cd_new_notifications)
     Box(
         modifier
+            .semantics { contentDescription = description }
             .size(12.dp)
             .background(Color.White, CircleShape)
             .padding(2.dp)

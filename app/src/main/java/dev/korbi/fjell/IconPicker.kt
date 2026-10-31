@@ -1,6 +1,5 @@
 package dev.korbi.fjell
 
-import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -45,6 +44,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -79,6 +79,10 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -131,6 +135,7 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
     val scope = rememberCoroutineScope()
     val offset = remember { Animatable(0f) }
     val dismiss by rememberUpdatedState(onDismiss)
+    val closeLabel = stringResource(R.string.cd_close)
 
     fun dragBy(delta: Float) {
         scope.launch { offset.snapTo((offset.value + delta).coerceAtLeast(0f)) }
@@ -206,7 +211,10 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                         state = rememberDraggableState { dragBy(it) },
                         orientation = Orientation.Vertical,
                         onDragStopped = { settle(it) },
-                    ),
+                    )
+                    // Tapping closes too, so the handle works without dragging (and for TalkBack).
+                    .clickable(noRipple, null, role = Role.Button, onClickLabel = closeLabel, onClick = onDismiss)
+                    .semantics { contentDescription = closeLabel },
             ) {
                 Box(Modifier.size(width = 40.dp, height = 4.dp).background(PopupText.copy(alpha = 0.45f), RoundedCornerShape(50)))
             }
@@ -258,6 +266,7 @@ fun PopupTransition(visible: Boolean, content: @Composable () -> Unit) {
 /** Hand-written popup title, with an optional ‹ to go back. */
 @Composable
 fun PopupHeader(title: String, onBack: (() -> Unit)? = null) {
+    val backLabel = stringResource(R.string.cd_back)
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -268,7 +277,10 @@ fun PopupHeader(title: String, onBack: (() -> Unit)? = null) {
             Text(
                 "‹",
                 style = TextStyle(fontFamily = Lato, fontSize = 34.sp, color = PopupText),
-                modifier = Modifier.clickable(onClick = onBack).padding(horizontal = 12.dp),
+                modifier = Modifier
+                    .clickable(role = Role.Button, onClick = onBack)
+                    .semantics { contentDescription = backLabel }
+                    .padding(horizontal = 12.dp),
             )
         }
         Text(
@@ -324,7 +336,7 @@ internal fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit, hint: S
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle)
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onToggle() })
             .padding(horizontal = 22.dp, vertical = 6.dp),
     ) {
         leading()
