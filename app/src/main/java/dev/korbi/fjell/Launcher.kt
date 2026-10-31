@@ -179,8 +179,8 @@ fun Launcher(
         iconPickerFor = null
     }
     BackHandler(drawerOpen) { drawerOpen = false }
-    // The stack and the popups share one look: blurred, dimmed wallpaper with home faded out.
-    val overlayOpen = drawerOpen || settingsOpen || iconPickerFor != null
+    // Only the stack blurs the whole wallpaper; popups blur just what's behind their sheet.
+    val overlayOpen = drawerOpen
 
     val view = LocalView.current
     SideEffect {
@@ -196,6 +196,7 @@ fun Launcher(
             LocalIconVersion provides iconVersion,
             LocalOpenIconPicker provides { app -> iconPickerFor = app },
             LocalHapticFeedback provides haptics,
+            LocalScene provides settings.scene,
         ) {
             Box(Modifier.fillMaxSize()) {
                 WallpaperLayer(settings.scene, blurred = overlayOpen)
