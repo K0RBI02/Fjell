@@ -1,0 +1,400 @@
+package dev.korbi.fjell
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.text.Normalizer
+import kotlinx.coroutines.launch
+
+@Composable
+internal fun Drawer(
+    apps: List<AppEntry>,
+    gridKeys: List<String?>,
+    recentKeys: List<String>,
+    launchCounts: Map<String, Int>,
+    hiddenKeys: Set<String>,
+    settings: LauncherSettings,
+    actions: LauncherActions,
+    onClose: () -> Unit,
+) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val showHeaders = settings.drawerSections
+    // The stack holds everything not on the home grid; search covers all apps.
+    val filtered = remember(apps, gridKeys, hiddenKeys, query, launchCounts) {
+        val q = query.trim()
+        if (q.isEmpty()) {
+            apps.filter { it.key !in gridKeys && it.key !in hiddenKeys }
+        } else {
+            // Search hits: most used first, ties alphabetical (stable sort).
+            apps.filter { it.label.contains(q, ignoreCase = true) }.sortedByDescending { launchCounts[it.key] ?: 0 }
+        }
+    }
+    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query, settings.drawerRecent) {
+        if (query.isNotBlank() || !settings.drawerRecent) return@remember emptyList()
+        val byKey = apps.associateBy { it.key }
+        recentKeys.filter { it !in gridKeys && it !in hiddenKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
+    }
+    val focus = LocalFocusManager.current
+    val close by rememberUpdatedState {
+        focus.clearFocus()
+        onClose()
+    }
+    val pullToClose = with(LocalDensity.current) { 110.dp.toPx() }
+    // Pulling down while the list is already at the top closes the drawer.
+    val closeOnPull = remember {
+        object : NestedScrollConnection {
+            var pulled = 0f
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
+                if (source == NestedScrollSource.UserInput && available.y > 0) {
+                    pulled += available.y
+                    if (pulled > pullToClose) {
+                        pulled = 0f
+                        close()
+                    }
+                } else if (consumed.y != 0f) {
+                    pulled = 0f
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                pulled = 0f
+                return Velocity.Zero
+            }
+        }
+    }
+    val launchAndClose = { app: AppEntry ->
+        actions.launch(app)
+        close()
+    }
+    // Letter sections only while browsing; a search result list stays flat.
+    // Within a letter, often-used apps come first; the sort is stable, so ties stay alphabetical.
+    val sections = remember(filtered, query, launchCounts) {
+        if (query.isBlank()) {
+            filtered.groupBy { sectionLetter(it.label) }.mapValues { (_, group) -> group.sortedByDescending { launchCounts[it.key] ?: 0 } }
+        } else {
+            null
+        }
+    }
+    // Where each letter starts in the list, for the alphabet strip. Without visible headers
+    // that's simply the letter's first app.
+    val headerIndex = remember(sections, recentApps.isEmpty(), showHeaders) {
+        // The "recent" header and row sit above the first letter.
+        var index = if (recentApps.isEmpty()) 0 else 2
+        sections.orEmpty().mapValues { (_, group) -> index.also { index += group.size + if (showHeaders) 1 else 0 } }
+    }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val currentLetter by remember(headerIndex) {
+        derivedStateOf {
+            val first = listState.firstVisibleItemIndex
+            headerIndex.entries.lastOrNull { it.value <= first }?.key
+        }
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x99101422))
+            .statusBarsPadding()
+            .imePadding(),
+    ) {
+        BasicTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            textStyle = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White),
+            cursorBrush = SolidColor(Color.White),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+            keyboardActions = KeyboardActions(
+                onGo = {
+                    val first = filtered.firstOrNull()
+                    if (first != null) {
+                        launchAndClose(first)
+                    } else if (query.isNotBlank()) {
+                        actions.searchWeb(query.trim())
+                        close()
+                    }
+                },
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .background(Color.White.copy(alpha = 0.12f), RoundedCornerShape(50))
+                .padding(horizontal = 22.dp, vertical = 14.dp),
+            decorationBox = { field ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SearchGlyph(Color.White.copy(alpha = 0.7f))
+                    Spacer(Modifier.width(14.dp))
+                    Box {
+                        if (query.isEmpty()) {
+                            Text("search", style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.55f)))
+                        }
+                        field()
+                    }
+                }
+            },
+        )
+
+        val appRow: @Composable (AppEntry) -> Unit = { app ->
+            AppWithMenu(
+                app = app,
+                inGrid = app.key in gridKeys,
+                actions = actions,
+                onLaunch = { launchAndClose(app) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 28.dp, end = 40.dp, top = 9.dp, bottom = 9.dp),
+                ) {
+                    AppIcon(app, 42.dp, actions)
+                    Spacer(Modifier.width(18.dp))
+                    Text(app.label, style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White))
+                }
+            }
+        }
+
+        Box(Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize().nestedScroll(closeOnPull),
+                contentPadding = WindowInsets.navigationBars.asPaddingValues(),
+            ) {
+                if (sections == null) {
+                    items(filtered, key = { it.key }) { appRow(it) }
+                    item(key = "web") {
+                        WebSearchRow(query.trim()) {
+                            actions.searchWeb(query.trim())
+                            close()
+                        }
+                    }
+                } else {
+                    if (recentApps.isNotEmpty()) {
+                        item(key = "recent:header") { SectionHeader("recent") }
+                        item(key = "recent:row") { RecentRow(recentApps, actions, onLaunch = launchAndClose) }
+                    }
+                    sections.forEach { (letter, group) ->
+                        if (showHeaders) item(key = "section:$letter") { SectionHeader(letter) }
+                        items(group, key = { it.key }) { appRow(it) }
+                    }
+                }
+            }
+            if (sections != null && settings.drawerIndex) {
+                AlphabetIndex(
+                    available = sections.keys,
+                    current = currentLetter,
+                    onSelect = { letter -> headerIndex[letter]?.let { scope.launch { listState.scrollToItem(it) } } },
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .navigationBarsPadding()
+                        .padding(vertical = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+private const val RECENT_SHOWN = 4
+
+/** The last few apps started from the launcher, as a row of bubbles at the top of the stack. */
+@Composable
+private fun RecentRow(apps: List<AppEntry>, actions: LauncherActions, onLaunch: (AppEntry) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 40.dp, top = 6.dp, bottom = 4.dp)) {
+        apps.forEach { app ->
+            AppWithMenu(
+                app = app,
+                inGrid = false,
+                actions = actions,
+                onLaunch = { onLaunch(app) },
+                modifier = Modifier.weight(1f),
+            ) {
+                Box(Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
+                    AppIcon(app, 50.dp, actions)
+                }
+            }
+        }
+        repeat(RECENT_SHOWN - apps.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+/** Last row of a stack search: hand the query to the web. */
+@Composable
+private fun WebSearchRow(query: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 28.dp, end = 40.dp, top = 9.dp, bottom = 9.dp),
+    ) {
+        Box(Modifier.size(42.dp).background(Color.White.copy(alpha = 0.14f), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
+            SearchGlyph(Color.White)
+        }
+        Spacer(Modifier.width(18.dp))
+        Text(
+            "Search the web: “$query”",
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(fontFamily = Lato, fontSize = 18.sp, color = Color.White.copy(alpha = 0.85f)),
+        )
+    }
+}
+
+/** A small magnifying glass. */
+@Composable
+fun SearchGlyph(color: Color) {
+    Canvas(Modifier.size(20.dp)) {
+        val stroke = size.minDimension * 0.11f
+        val radius = size.minDimension * 0.32f
+        val lens = Offset(size.width * 0.42f, size.height * 0.42f)
+        drawCircle(color, radius, lens, style = Stroke(stroke))
+        val handleStart = lens + Offset(radius * 0.72f, radius * 0.72f)
+        drawLine(color, handleStart, Offset(size.width * 0.9f, size.height * 0.9f), stroke, StrokeCap.Round)
+    }
+}
+
+private val INDEX_LETTERS = listOf("#") + ('A'..'Z').map(Char::toString)
+
+/** "Ärzte" -> "A", "2 Player Games" -> "#". */
+internal fun sectionLetter(label: String): String {
+    val first = Normalizer.normalize(label.take(1), Normalizer.Form.NFD).firstOrNull()?.uppercaseChar()
+    return if (first != null && first in 'A'..'Z') first.toString() else "#"
+}
+
+@Composable
+private fun SectionHeader(letter: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 28.dp, end = 40.dp, top = 14.dp, bottom = 4.dp),
+    ) {
+        Text(letter, style = TextStyle(fontFamily = IndieFlower, fontSize = 22.sp, color = Color.White.copy(alpha = 0.8f)))
+        Spacer(Modifier.width(14.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(Color.White.copy(alpha = 0.18f)))
+    }
+}
+
+/**
+ * Letter strip along the right edge. Tap or slide over it to jump; letters with
+ * no apps jump to the next one that has some.
+ */
+@Composable
+private fun AlphabetIndex(
+    available: Set<String>,
+    current: String?,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptics = LocalHapticFeedback.current
+    val select by rememberUpdatedState(onSelect)
+    val present by rememberUpdatedState(available)
+    Column(
+        verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier
+            .width(30.dp)
+            .fillMaxHeight()
+            .pointerInput(Unit) {
+                var last: String? = null
+                fun pick(y: Float) {
+                    val i = (y / size.height * INDEX_LETTERS.size).toInt().coerceIn(INDEX_LETTERS.indices)
+                    val target = INDEX_LETTERS.drop(i).firstOrNull { it in present }
+                        ?: INDEX_LETTERS.take(i).lastOrNull { it in present }
+                        ?: return
+                    if (target == last) return
+                    last = target
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    select(target)
+                }
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    pick(down.position.y)
+                    while (true) {
+                        val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        change.consume()
+                        pick(change.position.y)
+                    }
+                    last = null
+                }
+            },
+    ) {
+        INDEX_LETTERS.forEach { letter ->
+            val alpha = when {
+                letter == current -> 1f
+                letter in available -> 0.7f
+                else -> 0.25f
+            }
+            Text(
+                letter,
+                style = TextStyle(
+                    fontFamily = Lato,
+                    fontSize = 12.sp,
+                    fontWeight = if (letter == current) FontWeight.Bold else FontWeight.Normal,
+                    color = Color.White.copy(alpha = alpha),
+                ),
+            )
+        }
+    }
+}
