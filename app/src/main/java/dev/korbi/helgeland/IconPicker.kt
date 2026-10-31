@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -244,6 +245,16 @@ fun SettingsPopup(
                             .background(Night)
                             .clickable(onClick = actions::openHomeSettings)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                }
+                item {
+                    val context = LocalContext.current
+                    val version = remember { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
+                    Text(
+                        "Helgeland $version",
+                        textAlign = TextAlign.Center,
+                        style = TextStyle(fontFamily = IndieFlower, fontSize = 15.sp, color = Muted),
+                        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
                     )
                 }
             }
