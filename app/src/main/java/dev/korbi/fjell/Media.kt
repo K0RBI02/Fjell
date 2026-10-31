@@ -65,10 +65,6 @@ class MediaWatcher(private val context: Context, private val onChange: (NowPlayi
         controller?.transportControls?.skipToNext()
     }
 
-    fun previous() {
-        controller?.transportControls?.skipToPrevious()
-    }
-
     /** Opens the player: its own "now playing" screen if it offers one, else the app. */
     fun open() {
         val c = controller ?: return

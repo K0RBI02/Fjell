@@ -286,8 +286,6 @@ class MainActivity : ComponentActivity() {
 
         override fun mediaNext() = media.next()
 
-        override fun mediaPrevious() = media.previous()
-
         override fun mediaOpen() = media.open()
 
         override fun moveInGrid(from: Int, to: Int) {
@@ -426,7 +424,6 @@ interface LauncherActions {
     fun openMediaAccessSettings()
     fun mediaPlayPause()
     fun mediaNext()
-    fun mediaPrevious()
     fun mediaOpen()
     fun openClock()
     fun openCalendar()

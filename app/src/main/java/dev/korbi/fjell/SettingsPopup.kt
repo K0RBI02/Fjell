@@ -168,7 +168,7 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
             label = "Media",
             hint = when {
                 missingAccess -> "Benachrichtigungszugriff fehlt · antippen zum Freigeben"
-                settings.media -> "zeigt, was gerade läuft · tippen, wischen, halten"
+                settings.media -> "zeigt, was gerade läuft · Titel öffnet die App"
                 else -> "aus"
             },
             on = settings.media,
