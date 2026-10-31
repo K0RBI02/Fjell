@@ -1,6 +1,5 @@
 package dev.korbi.helgeland
 
-import androidx.compose.ui.res.stringResource
 import android.text.format.DateFormat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -11,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,8 +31,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -41,6 +44,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -53,15 +59,17 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlinx.coroutines.delay
 
 @Composable
 internal fun Home(
     apps: List<AppEntry>,
     gridKeys: List<String?>,
-    temperature: Int?,
+    weather: WeatherNow?,
     nextAlarm: Long?,
     nowPlaying: NowPlaying?,
     dotPackages: Set<String>,
@@ -135,7 +143,7 @@ internal fun Home(
         Clock(
             color = scene.ink,
             large = settings.largeClock,
-            temperature = temperature,
+            weather = weather,
             nextAlarm = nextAlarm,
             actions = actions,
             modifier = Modifier.statusBarsPadding().padding(start = 30.dp, top = 64.dp),
@@ -195,7 +203,7 @@ internal fun Home(
 }
 
 @Composable
-private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
+private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
     val context = LocalView.current.context
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     // Re-keyed on lifecycle so the time is fresh the moment we come back to the foreground.
@@ -208,7 +216,7 @@ private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Lo
     val timePattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
     val time = now.format(DateTimeFormatter.ofPattern(timePattern))
     val date = now.format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
-    val subline = if (temperature != null) "$date | $temperature°C" else date
+    val subline = if (weather != null) "$date | ${weather.temperature}°C" else date
     // Only alarms within the next day are worth a glance on the home screen.
     val alarm = nextAlarm
         ?.takeIf { it - System.currentTimeMillis() in 0..ALARM_HORIZON_MS }
@@ -227,6 +235,10 @@ private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Lo
             modifier = Modifier.padding(start = 6.dp).offset(y = (-18).dp),
         ) {
             Text(subline, style = sublineStyle, modifier = Modifier.clickable(noRipple, null) { actions.openCalendar() })
+            if (weather != null) {
+                Spacer(Modifier.width(5.dp))
+                Canvas(Modifier.size(17.dp).semantics { contentDescription = weather.sky.name }) { drawSkyGlyph(weather.sky, color) }
+            }
             if (alarm != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -242,6 +254,63 @@ private fun Clock(color: Color, large: Boolean, temperature: Int?, nextAlarm: Lo
 }
 
 private const val ALARM_HORIZON_MS = 24 * 60 * 60 * 1000L
+
+/** The current sky as a small line glyph, in the same hand as the bell. */
+private fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
+    val stroke = size.minDimension * 0.1f
+    val w = size.width
+    val h = size.height
+    fun sun(center: Offset, radius: Float) {
+        drawCircle(color, radius, center, style = Stroke(stroke))
+        for (i in 0 until 8) {
+            val angle = Math.PI / 4 * i
+            val dir = Offset(cos(angle).toFloat(), sin(angle).toFloat())
+            drawLine(color, center + dir * (radius * 1.45f), center + dir * (radius * 1.95f), stroke, StrokeCap.Round)
+        }
+    }
+    fun cloud(top: Float) {
+        val path = Path().apply {
+            moveTo(w * 0.2f, top + h * 0.34f)
+            cubicTo(w * 0.02f, top + h * 0.34f, w * 0.04f, top + h * 0.08f, w * 0.24f, top + h * 0.1f)
+            cubicTo(w * 0.3f, top - h * 0.1f, w * 0.62f, top - h * 0.12f, w * 0.68f, top + h * 0.06f)
+            cubicTo(w * 0.94f, top + h * 0.02f, w * 1f, top + h * 0.34f, w * 0.8f, top + h * 0.34f)
+            close()
+        }
+        drawPath(path, color, style = Stroke(stroke, join = StrokeJoin.Round))
+    }
+    when (sky) {
+        Sky.Clear -> sun(center, w * 0.2f)
+        Sky.ClearNight -> {
+            // A crescent: the full disc minus a shifted one.
+            val disc = Path().apply { addOval(Rect(center, w * 0.36f)) }
+            val bite = Path().apply { addOval(Rect(center + Offset(w * 0.2f, -h * 0.16f), w * 0.3f)) }
+            drawPath(Path.combine(PathOperation.Difference, disc, bite), color, style = Stroke(stroke, join = StrokeJoin.Round))
+        }
+        Sky.PartlyCloudy -> {
+            sun(Offset(w * 0.34f, h * 0.32f), w * 0.13f)
+            cloud(h * 0.5f)
+        }
+        Sky.Cloudy -> cloud(h * 0.36f)
+        Sky.Fog -> listOf(0.3f, 0.5f, 0.7f).forEachIndexed { i, y ->
+            drawLine(color, Offset(w * (0.1f + 0.08f * i), h * y), Offset(w * (0.9f - 0.08f * (2 - i)), h * y), stroke, StrokeCap.Round)
+        }
+        Sky.Rain -> {
+            cloud(h * 0.22f)
+            listOf(0.3f, 0.52f, 0.74f).forEach { x -> drawLine(color, Offset(w * x, h * 0.68f), Offset(w * (x - 0.06f), h * 0.88f), stroke, StrokeCap.Round) }
+        }
+        Sky.Snow -> {
+            cloud(h * 0.22f)
+            listOf(0.3f, 0.52f, 0.74f).forEach { x -> drawCircle(color, stroke * 0.9f, Offset(w * x, h * 0.8f)) }
+        }
+        Sky.Thunder -> {
+            cloud(h * 0.22f)
+            val bolt = Path().apply {
+                moveTo(w * 0.56f, h * 0.6f); lineTo(w * 0.42f, h * 0.8f); lineTo(w * 0.56f, h * 0.8f); lineTo(w * 0.46f, h * 0.98f)
+            }
+            drawPath(bolt, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
+}
 
 /** A little alarm bell, hand-drawn style. */
 internal fun DrawScope.drawBellGlyph(color: Color) {

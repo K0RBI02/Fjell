@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
     private val recent = mutableStateOf<List<String>>(emptyList())
     private val launchCounts = mutableStateOf<Map<String, Int>>(emptyMap())
     private val hidden = mutableStateOf<Set<String>>(emptySet())
-    private val temperature = mutableStateOf<Int?>(null)
+    private val weather = mutableStateOf<WeatherNow?>(null)
 
     /** Trigger time of the next alarm, if one is set; the UI decides whether it's close enough to show. */
     private val nextAlarm = mutableStateOf<Long?>(null)
@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { NotificationDots.packages.collect { dotPackages.value = it } }
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
-        temperature.value = prefs.lastTemperature
+        weather.value = prefs.lastWeather
 
         if (!prefs.askedForLocation) {
             prefs.askedForLocation = true
@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
                 recentKeys = recent.value,
                 launchCounts = launchCounts.value,
                 hiddenKeys = hidden.value,
-                temperature = temperature.value,
+                weather = weather.value,
                 nextAlarm = nextAlarm.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
@@ -174,9 +174,9 @@ class MainActivity : ComponentActivity() {
         if (!settings.value.showWeather || !granted || !(force || stale)) return
         weatherFetchedAt = System.currentTimeMillis()
         lifecycleScope.launch {
-            val temp = Weather.currentTemperature(this@MainActivity) ?: return@launch
-            temperature.value = temp
-            prefs.lastTemperature = temp
+            val now = Weather.current(this@MainActivity) ?: return@launch
+            weather.value = now
+            prefs.lastWeather = now
         }
     }
 
