@@ -14,6 +14,8 @@ data class AppEntry(
     val label: String,
     val component: ComponentName,
     val user: UserHandle,
+    /** When the app was first installed, for spotting new ones. */
+    val installedAt: Long = 0L,
 ) {
     /** Stable id used for the home grid; includes the user so work-profile twins stay distinct. */
     val key: String = "${component.flattenToString()}#${user.hashCode()}"
@@ -102,5 +104,6 @@ class AppRepository(private val context: Context) {
         label = label.toString(),
         component = componentName,
         user = user,
+        installedAt = firstInstallTime,
     )
 }

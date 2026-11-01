@@ -5,7 +5,7 @@
     <string name="cd_search">Search</string>
     <string name="cd_all_apps">All apps</string>
     <string name="search_web">Search the web: “%1$s”</string>
-    <string name="recent_header">recent</string>
+    <string name="recent_header">relevant</string>
     <string name="menu_move_to_stack">Move to stack</string>
     <string name="menu_add_to_home">Add to home screen</string>
     <string name="menu_change_icon">Change icon</string>
@@ -49,7 +49,7 @@
     <string name="page_clock">Clock &amp; weather</string>
     <string name="page_clock_hint">size, weather, alarm</string>
     <string name="page_stack">Stack</string>
-    <string name="page_stack_hint">recent, alphabet, hidden apps</string>
+    <string name="page_stack_hint">relevant, alphabet, hidden apps</string>
     <string name="page_icons">Icons</string>
     <string name="page_icons_hint">style for all apps</string>
     <string name="page_gestures">Gestures</string>
@@ -74,8 +74,8 @@
     <string name="weather_hint">temperature after the date</string>
     <string name="next_alarm">Next alarm</string>
     <string name="next_alarm_hint">if one rings within the next 24 hours</string>
-    <string name="recent">Recent</string>
-    <string name="recent_hint">the last 4 apps at the top</string>
+    <string name="recent">Relevant</string>
+    <string name="recent_hint">new apps first, then your most used</string>
     <string name="alphabet_strip">Alphabet strip</string>
     <string name="alphabet_strip_hint">to jump to a letter</string>
     <string name="letter_headers">Letter headers</string>

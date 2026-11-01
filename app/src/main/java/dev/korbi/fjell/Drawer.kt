@@ -118,10 +118,19 @@ internal fun Drawer(
             apps.filter { it.label.contains(q, ignoreCase = true) }.sortedByDescending { launchCounts[it.key] ?: 0 }
         }
     }
-    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, query, settings.drawerRecent) {
+    // The "relevant" row: new apps first, then the most used (see Relevance).
+    val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, launchCounts, query, settings.drawerRecent) {
         if (query.isNotBlank() || !settings.drawerRecent) return@remember emptyList()
         val byKey = apps.associateBy { it.key }
-        recentKeys.filter { it !in gridKeys && it !in hiddenKeys }.mapNotNull(byKey::get).take(RECENT_SHOWN)
+        val candidates = apps.filter { it.key !in gridKeys && it.key !in hiddenKeys }.map { it.key }
+        Relevance.pick(
+            candidates = candidates,
+            installedAt = { byKey[it]?.installedAt ?: 0L },
+            launches = { launchCounts[it] ?: 0 },
+            recent = recentKeys,
+            now = System.currentTimeMillis(),
+            limit = RECENT_SHOWN,
+        ).mapNotNull(byKey::get)
     }
     val focus = LocalFocusManager.current
     val close by rememberUpdatedState {
