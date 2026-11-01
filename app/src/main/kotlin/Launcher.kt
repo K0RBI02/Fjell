@@ -3,6 +3,7 @@ package dev.korbi.fjell
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -49,7 +50,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -97,6 +97,8 @@ fun Launcher(
     actions: LauncherActions,
     events: List<CalendarEvent> = emptyList(),
     place: Place? = null,
+    scenes: List<Scene> = Scene.BUILT_IN,
+    editingScene: Scene? = null,
 ) {
     // With the automatic scene on, the wallpaper follows the clock; checked once a minute.
     val clock = LocalClock.current
@@ -106,11 +108,8 @@ fun Launcher(
             delay(60_000L - clock.millis() % 60_000L)
         }
     }
-    val chosenSettings = settings
-
-    @Suppress("NAME_SHADOWING")
     val sun = remember(now.toLocalDate(), place) { place?.let { Sun.times(now.toLocalDate(), it, clock.zone) } }
-    val settings = settings.copy(scene = settings.sceneAt(now, sun))
+    val scene = scenes.resolve(settings.sceneAt(now, sun))
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
     var drawerSearch by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
@@ -120,6 +119,7 @@ fun Launcher(
         drawerSearch = false
         settingsOpen = false
         iconPickerFor = null
+        actions.closeWallpaperEditor()
     }
     BackHandler(drawerOpen) {
         drawerOpen = false
@@ -132,7 +132,7 @@ fun Launcher(
     SideEffect {
         // The drawer is always dark; on home it depends on the scene's sky.
         val window = (view.context as Activity).window
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = settings.scene.lightSky && !overlayOpen
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = scene.lightSky && !overlayOpen && editingScene == null
     }
     val haptics = if (settings.haptics) LocalHapticFeedback.current else NoHaptics
 
@@ -142,13 +142,14 @@ fun Launcher(
             LocalIconVersion provides iconVersion,
             LocalOpenIconPicker provides { app -> iconPickerFor = app },
             LocalHapticFeedback provides haptics,
-            LocalScene provides settings.scene,
+            LocalScene provides scene,
         ) {
             Box(Modifier.fillMaxSize()) {
-                WallpaperLayer(settings.scene, blurred = overlayOpen)
+                WallpaperLayer(scene, blurred = overlayOpen)
 
                 val homeAlpha by animateFloatAsState(if (overlayOpen) 0f else 1f, label = "homeAlpha")
                 Home(
+                    scene = scene,
                     apps = apps,
                     gridKeys = gridKeys,
                     weather = weather.takeIf { settings.showWeather },
@@ -194,13 +195,14 @@ fun Launcher(
                     sampleApp = gridKeys.firstNotNullOfOrNull { key -> apps.firstOrNull { it.key == key } } ?: apps.firstOrNull(),
                     globalStyle = globalIconStyle,
                     iconPacks = iconPacks,
-                    settings = chosenSettings,
+                    settings = settings,
                     stapelShown = MainActivity.STAPEL_KEY in gridKeys,
                     searchShown = GridSlots.SEARCH_KEY in gridKeys,
                     hiddenApps = apps.filter { it.key in hiddenKeys },
                     actions = actions,
                     onDismiss = { settingsOpen = false },
                     sun = sun,
+                    scenes = scenes,
                 )
             }
             // Keep the last app around so the picker can still render while it animates out.
@@ -217,6 +219,12 @@ fun Launcher(
                     )
                 }
             }
+            // The wallpaper editor covers everything, like a preview of the home screen.
+            var editorScene by remember { mutableStateOf<Scene?>(null) }
+            editingScene?.let { editorScene = it }
+            AnimatedVisibility(editingScene != null, enter = fadeIn(tween(250)), exit = fadeOut(tween(200))) {
+                editorScene?.let { WallpaperEditor(it, isNew = scenes.none { known -> known.id == it.id }, actions = actions) }
+            }
         }
     }
 }
@@ -224,11 +232,19 @@ fun Launcher(
 @Composable
 internal fun WallpaperLayer(scene: Scene, blurred: Boolean) {
     val blur by animateDpAsState(if (blurred) 24.dp else 0.dp, tween(350), label = "blur")
+    // A scene change (timetable, new pick) fades over instead of jumping.
+    Crossfade(scene, animationSpec = tween(900), label = "scene") { shown ->
+        WallpaperImage(shown, Modifier.fillMaxSize().blur(blur))
+    }
+}
+
+@Composable
+internal fun WallpaperImage(scene: Scene, modifier: Modifier = Modifier) {
     Image(
-        painter = painterResource(scene.res),
+        painter = rememberScenePainter(scene),
         contentDescription = null,
         contentScale = ContentScale.Crop,
-        modifier = Modifier.fillMaxSize().blur(blur),
+        modifier = modifier,
     )
 }
 

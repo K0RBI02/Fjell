@@ -1,42 +1,15 @@
 package dev.korbi.fjell
 
 import android.content.SharedPreferences
-import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.graphics.Color
 import java.time.Clock
 import java.time.LocalDateTime
 
-/**
- * The three scenes to choose from. Positions are fractions of the image height:
- * [gridTop] is where the calm bottom area for the app grid starts, and the media
- * line sits between [mediaTop] and [mediaBottom] without covering any motif.
- */
-enum class Scene(
-    @DrawableRes val res: Int,
-    @StringRes val label: Int,
-    val gridTop: Float,
-    val mediaTop: Float,
-    val mediaBottom: Float,
-    /** Clock and date color, chosen against the sky. */
-    val ink: Color,
-    /** Media line color, chosen against its band. */
-    val mediaInk: Color,
-    /** Light sky: status bar icons must be dark. */
-    val lightSky: Boolean,
-) {
-    Mountain(R.drawable.wp_mountain, R.string.scene_mountain, 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
-    Pole(R.drawable.wp_pole, R.string.scene_pole, 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
-    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
-    ;
+/** December to February: the time for the winter scene, if one is chosen. */
+fun isWinter(time: LocalDateTime) = time.monthValue in WINTER_MONTHS
 
-    companion object {
-        private val WINTER_MONTHS = setOf(12, 1, 2)
-
-        fun isWinter(time: LocalDateTime) = time.monthValue in WINTER_MONTHS
-    }
-}
+private val WINTER_MONTHS = setOf(12, 1, 2)
 
 enum class SunEvent { Sunrise, Sunset }
 
@@ -44,7 +17,7 @@ enum class SunEvent { Sunrise, Sunset }
  * From [minute] of the day (0 until 1440) on, [scene] shows, until the next slot takes over.
  * A [sun] slot follows sunrise or sunset instead; [minute] is its stand-in while those are unknown.
  */
-data class SceneSlot(val minute: Int, val scene: Scene, val sun: SunEvent? = null) {
+data class SceneSlot(val minute: Int, val scene: String, val sun: SunEvent? = null) {
     fun minuteWith(times: SunTimes?): Int = when (sun) {
         null -> minute
         SunEvent.Sunrise -> times?.sunrise ?: minute
@@ -55,7 +28,7 @@ data class SceneSlot(val minute: Int, val scene: Scene, val sun: SunEvent? = nul
 /** The user's wallpaper timetable; each slot runs until the next one, the last one past midnight. */
 object SceneSchedule {
     const val MAX_SLOTS = 6
-    val DEFAULT = listOf(SceneSlot(7 * 60, Scene.Mountain), SceneSlot(18 * 60, Scene.Pole))
+    val DEFAULT = listOf(SceneSlot(7 * 60, Scene.DEFAULT_ID), SceneSlot(18 * 60, "dusk"))
 
     /** The slot in charge at [minute] given today's [sun] times, or null for an empty schedule. */
     fun slotAt(slots: List<SceneSlot>, minute: Int, sun: SunTimes? = null): SceneSlot? {
@@ -72,25 +45,24 @@ object SceneSchedule {
     }
 
     /** "420:Mountain,1080:Pole:Sunset"; unknown scenes and broken entries are skipped. */
-    fun encode(slots: List<SceneSlot>) = slots.joinToString(",") { listOfNotNull(it.minute, it.scene.name, it.sun?.name).joinToString(":") }
+    fun encode(slots: List<SceneSlot>) = slots.joinToString(",") { listOfNotNull(it.minute, it.scene, it.sun?.name).joinToString(":") }
 
     fun decode(text: String?): List<SceneSlot>? = text?.split(',')?.mapNotNull { part ->
-        val fields = part.split(':').takeIf { it.size in 2..3 } ?: return@mapNotNull null
-        val scene = Scene.entries.firstOrNull { it.name == fields[1] } ?: return@mapNotNull null
-        val sun = fields.getOrNull(2)?.let { name -> SunEvent.entries.firstOrNull { it.name == name } ?: return@mapNotNull null }
-        fields[0].toIntOrNull()?.takeIf { it in 0 until MINUTES_PER_DAY }?.let { SceneSlot(it, scene, sun) }
+        // Custom scene ids contain a colon themselves ("custom:…"), so split from both ends.
+        val sun = part.substringAfterLast(':').let { last -> SunEvent.entries.firstOrNull { it.name == last } }
+        val body = if (sun != null) part.substringBeforeLast(':') else part
+        val scene = body.substringAfter(':', missingDelimiterValue = "").takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+        body.substringBefore(':').toIntOrNull()?.takeIf { it in 0 until MINUTES_PER_DAY }?.let { SceneSlot(it, scene, sun) }
     }
 
     private const val MINUTES_PER_DAY = 24 * 60
 }
 
-private val DarkInk get() = Color(0xFF2E3550)
-
 /** Where the UI reads the time from: the system clock, or a fixed one in screenshot tests. */
 val LocalClock = staticCompositionLocalOf<Clock> { Clock.systemDefaultZone() }
 
 /** The active scene, for parts (like popup sheets) that redraw the wallpaper themselves. */
-val LocalScene = staticCompositionLocalOf { Scene.Mountain }
+val LocalScene = staticCompositionLocalOf { SceneArt.Fjord.scene }
 
 enum class SwipeDownAction(@StringRes val label: Int) {
     Notifications(R.string.action_notifications),
@@ -108,7 +80,8 @@ enum class DoubleTapAction(@StringRes val label: Int) {
 
 /** Every user-adjustable launcher option in one place. Grid layout and icons live elsewhere. */
 data class LauncherSettings(
-    val scene: Scene = Scene.Mountain,
+    /** Id of the chosen scene: a built-in one or the user's own picture. */
+    val scene: String = Scene.DEFAULT_ID,
     val largeClock: Boolean = true,
     val showWeather: Boolean = true,
     val showAlarm: Boolean = true,
@@ -128,17 +101,19 @@ data class LauncherSettings(
     val autoScene: Boolean = false,
     val schedule: List<SceneSlot> = SceneSchedule.DEFAULT,
     val snowInWinter: Boolean = true,
+    /** Shown all day in winter while [snowInWinter] is on. */
+    val winterScene: String = Scene.WINTER_ID,
 ) {
-    /** The scene to draw at [time]: the scheduled one if switched on, else the chosen one. */
-    fun sceneAt(time: LocalDateTime, sun: SunTimes? = null): Scene = when {
+    /** Id of the scene to draw at [time]: the scheduled one if switched on, else the chosen one. */
+    fun sceneAt(time: LocalDateTime, sun: SunTimes? = null): String = when {
         !autoScene -> scene
-        snowInWinter && Scene.isWinter(time) -> Scene.Snow
+        snowInWinter && isWinter(time) -> winterScene
         else -> SceneSchedule.slotAt(schedule, time.hour * 60 + time.minute, sun)?.scene ?: scene
     }
 
     fun save(sp: SharedPreferences) {
         sp.edit()
-            .putString("scene", scene.name)
+            .putString("scene", scene)
             .putBoolean("largeClock", largeClock)
             .putBoolean("showWeather", showWeather)
             .putBoolean("showAlarm", showAlarm)
@@ -157,6 +132,7 @@ data class LauncherSettings(
             .putBoolean("autoScene", autoScene)
             .putString("schedule", SceneSchedule.encode(schedule))
             .putBoolean("snowInWinter", snowInWinter)
+            .putString("winterScene", winterScene)
             .apply()
     }
 
@@ -164,7 +140,7 @@ data class LauncherSettings(
         fun load(sp: SharedPreferences): LauncherSettings {
             val d = LauncherSettings()
             return LauncherSettings(
-                scene = enumOr(sp.getString("scene", null), d.scene),
+                scene = sp.getString("scene", null) ?: d.scene,
                 largeClock = sp.getBoolean("largeClock", d.largeClock),
                 showWeather = sp.getBoolean("showWeather", d.showWeather),
                 showAlarm = sp.getBoolean("showAlarm", d.showAlarm),
@@ -183,6 +159,7 @@ data class LauncherSettings(
                 autoScene = sp.getBoolean("autoScene", d.autoScene),
                 schedule = SceneSchedule.decode(sp.getString("schedule", null)) ?: d.schedule,
                 snowInWinter = sp.getBoolean("snowInWinter", d.snowInWinter),
+                winterScene = sp.getString("winterScene", null) ?: d.winterScene,
             )
         }
 

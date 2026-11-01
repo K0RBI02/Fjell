@@ -9,6 +9,7 @@ lifecycle = "2.9.4"
 core-ktx = "1.19.1"
 junit = "4.13.2"
 robolectric = "4.17"
+json = "20250517"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
@@ -22,6 +23,8 @@ lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-com
 core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+# Android's org.json is a stub in plain unit tests; the reference implementation stands in.
+json = { module = "org.json:json", version.ref = "json" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 

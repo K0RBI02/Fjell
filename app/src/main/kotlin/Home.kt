@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -69,6 +68,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 internal fun Home(
+    scene: Scene,
     apps: List<AppEntry>,
     gridKeys: List<String?>,
     weather: WeatherNow?,
@@ -111,8 +111,7 @@ internal fun Home(
             }
         }
     }
-    val scene = settings.scene
-    val wallpaperSize = painterResource(scene.res).intrinsicSize
+    val wallpaperSize = rememberScenePainter(scene).intrinsicSize
 
     BoxWithConstraints(
         modifier = modifier

@@ -120,6 +120,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** The user's own wallpapers, next to the built-in drawn scenes. */
+    private val customScenes = mutableStateOf<List<Scene>>(emptyList())
+
+    /** A wallpaper open in the editor (new from the picker, or an existing one). */
+    private val editingScene = mutableStateOf<Scene?>(null)
+
+    private val pickWallpaper = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch {
+            val name = getString(R.string.picture_name, customScenes.value.size + 1)
+            val scene = ScenePictures.import(this@MainActivity, uri, name)
+            if (scene != null) {
+                editingScene.value = scene
+            } else {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_picture_failed), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private val calendarPermission: ActivityResultLauncher<String> = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) refreshEvents() else actions.updateSettings { it.copy(showEvents = false) }
     }
@@ -139,6 +158,8 @@ class MainActivity : ComponentActivity() {
         icons = IconProvider(this, prefs)
         globalIconStyle.value = icons.globalStyle
         settings.value = prefs.settings
+        customScenes.value = prefs.customScenes
+        if (!prefs.legacyScenesMigrated) migrateLegacyScenes()
         grid.value = prefs.grid
         recent.value = prefs.recent
         launchCounts.value = prefs.launchCounts
@@ -175,6 +196,8 @@ class MainActivity : ComponentActivity() {
                 nextAlarm = nextAlarm.value,
                 events = events.value,
                 place = place.value,
+                scenes = Scene.BUILT_IN + customScenes.value,
+                editingScene = editingScene.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
@@ -235,6 +258,24 @@ class MainActivity : ComponentActivity() {
             }
             weather.value = now
             prefs.lastWeather = now
+        }
+    }
+
+    /** Moves the pictures the app used to ship with into the user's own wallpapers, once. */
+    private fun migrateLegacyScenes() {
+        lifecycleScope.launch {
+            val moved = withContext(Dispatchers.IO) { runCatching { LegacyScenes.migrate(this@MainActivity) }.getOrNull() } ?: return@launch
+            customScenes.value = customScenes.value + moved.values
+            prefs.customScenes = customScenes.value
+            val ids = moved.mapValues { it.value.id }
+            actions.updateSettings { s ->
+                s.copy(
+                    scene = ids[s.scene] ?: s.scene,
+                    schedule = s.schedule.map { it.copy(scene = ids[it.scene] ?: it.scene) },
+                    winterScene = if (s.winterScene == Scene.WINTER_ID) ids.getValue("Snow") else s.winterScene,
+                )
+            }
+            prefs.legacyScenesMigrated = true
         }
     }
 
@@ -481,6 +522,40 @@ class MainActivity : ComponentActivity() {
             startSafely(Intent(AlarmClock.ACTION_SHOW_ALARMS))
         }
 
+        override fun addWallpaper() {
+            pickWallpaper.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+        }
+
+        override fun editWallpaper(scene: Scene) {
+            editingScene.value = scene
+        }
+
+        override fun saveWallpaper(scene: Scene) {
+            editingScene.value = null
+            lifecycleScope.launch {
+                // The media band moved with the grid line, so its ink color is read again.
+                val bitmap = scene.file?.let { ScenePictures.load(this@MainActivity, it) }
+                val final = if (bitmap != null) withContext(Dispatchers.Default) { ScenePictures.withColors(scene, bitmap) } else scene
+                val list = customScenes.value
+                customScenes.value = if (list.any { it.id == final.id }) list.map { if (it.id == final.id) final else it } else list + final
+                prefs.customScenes = customScenes.value
+            }
+        }
+
+        override fun closeWallpaperEditor() {
+            val scene = editingScene.value ?: return
+            editingScene.value = null
+            // A fresh import that was never saved leaves no file behind.
+            if (customScenes.value.none { it.id == scene.id }) ScenePictures.delete(this@MainActivity, scene)
+        }
+
+        override fun deleteWallpaper(scene: Scene) {
+            editingScene.value = null
+            customScenes.value = customScenes.value.filterNot { it.id == scene.id }
+            prefs.customScenes = customScenes.value
+            ScenePictures.delete(this@MainActivity, scene)
+        }
+
         override fun openNextAlarm() {
             // The clock app hands over a link to the exact alarm; older ones don't, so fall back to the list.
             val show = getSystemService(AlarmManager::class.java).nextAlarmClock?.showIntent
@@ -628,6 +703,15 @@ interface LauncherActions {
     fun mediaOpen()
     fun openClock()
     fun openCalendar()
+
+    /** Opens the photo picker; the chosen picture then opens in the wallpaper editor. */
+    fun addWallpaper()
+    fun editWallpaper(scene: Scene)
+
+    /** Adds a new wallpaper or updates an existing one, and closes the editor. */
+    fun saveWallpaper(scene: Scene)
+    fun closeWallpaperEditor()
+    fun deleteWallpaper(scene: Scene)
 
     /** The alarm that rings next, in its clock app; else the alarm list. */
     fun openNextAlarm()

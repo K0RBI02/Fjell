@@ -91,9 +91,36 @@ class ScreenshotTest {
 
     @Test
     fun schedule() = capture {
-        val slots = listOf(SceneSlot(7 * 60, Scene.Mountain), SceneSlot(18 * 60, Scene.Pole), SceneSlot(22 * 60 + 30, Scene.Snow))
+        val slots = listOf(SceneSlot(7 * 60, "fjord"), SceneSlot(18 * 60, "dusk", SunEvent.Sunset), SceneSlot(22 * 60 + 30, "winter"))
         Box(Modifier.fillMaxSize().background(Night).padding(top = 24.dp)) {
             ScheduleEditor(slots, update = {}, initiallyEditing = slots[1])
         }
+    }
+
+    @Test
+    fun wallpaperEditor() = capture {
+        WallpaperEditor(SceneArt.Dusk.scene, isNew = false, actions = actions)
+    }
+
+    @Test
+    fun winterHome() = capture {
+        Launcher(
+            apps = Fixtures.apps,
+            gridKeys = Fixtures.grid,
+            recentKeys = emptyList(),
+            launchCounts = emptyMap(),
+            hiddenKeys = emptySet(),
+            weather = WeatherNow(-3, Sky.Snow),
+            nextAlarm = null,
+            iconVersion = 0,
+            globalIconStyle = IconStyle.Original,
+            iconPacks = emptyList(),
+            settings = LauncherSettings(scene = Scene.WINTER_ID),
+            nowPlaying = null,
+            dotPackages = emptySet(),
+            noDots = emptySet(),
+            homePresses = 0,
+            actions = actions,
+        )
     }
 }

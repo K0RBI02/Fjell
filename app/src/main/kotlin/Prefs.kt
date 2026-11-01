@@ -67,6 +67,11 @@ class Prefs(context: Context) {
     }
 
     /** The last weather fetched, shown right away on the next start. */
+    /** The user's own wallpapers (the pictures themselves live in files/wallpapers). */
+    var customScenes: List<Scene>
+        get() = Scene.listFromJson(sp.getString("customScenes", null))
+        set(value) = sp.edit().putString("customScenes", Scene.listToJson(value)).apply()
+
     /** Where the phone was last seen, for sun times; coarse location only. */
     var lastPlace: Place?
         get() = if (sp.contains("placeLat")) Place(sp.getFloat("placeLat", 0f).toDouble(), sp.getFloat("placeLon", 0f).toDouble()) else null
@@ -95,6 +100,10 @@ class Prefs(context: Context) {
                 putString("weatherSky", value.sky.name)
             }
         }.apply()
+
+    var legacyScenesMigrated: Boolean
+        get() = sp.getBoolean("legacyScenesMigrated", false)
+        set(value) = sp.edit().putBoolean("legacyScenesMigrated", value).apply()
 
     var askedForLocation: Boolean
         get() = sp.getBoolean("askedForLocation", false)

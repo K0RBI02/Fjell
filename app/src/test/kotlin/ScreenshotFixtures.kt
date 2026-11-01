@@ -68,6 +68,11 @@ class FakeActions : LauncherActions {
     override fun openClock() = Unit
     override fun openCalendar() = Unit
     override fun openNextAlarm() = Unit
+    override fun addWallpaper() = Unit
+    override fun editWallpaper(scene: Scene) = Unit
+    override fun saveWallpaper(scene: Scene) = Unit
+    override fun closeWallpaperEditor() = Unit
+    override fun deleteWallpaper(scene: Scene) = Unit
     override fun openEvent(event: CalendarEvent) = Unit
     override fun expandNotifications() = Unit
     override suspend fun icon(app: AppEntry, sizePx: Int) = bubble(app, sizePx)

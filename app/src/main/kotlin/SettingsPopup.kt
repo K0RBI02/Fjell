@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
@@ -44,11 +47,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalTime
@@ -78,6 +81,7 @@ fun SettingsPopup(
     actions: LauncherActions,
     onDismiss: () -> Unit,
     sun: SunTimes? = null,
+    scenes: List<Scene> = Scene.BUILT_IN,
 ) {
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     BackHandler { if (page != null) page = null else onDismiss() }
@@ -93,7 +97,7 @@ fun SettingsPopup(
             ) {
                 when (current) {
                     null -> overview(onOpen = { page = it })
-                    SettingsPage.Home -> homePage(settings, stapelShown, searchShown, sun, actions, update)
+                    SettingsPage.Home -> homePage(settings, stapelShown, searchShown, sun, scenes, actions, update)
                     SettingsPage.Clock -> clockPage(settings, update)
                     SettingsPage.Stapel -> stapelPage(settings, hiddenApps, actions, update)
                     SettingsPage.Icons -> iconsPage(sampleApp, globalStyle, iconPacks, actions)
@@ -129,27 +133,44 @@ private fun LazyListScope.overview(onOpen: (SettingsPage) -> Unit) {
     }
 }
 
-private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Boolean, searchShown: Boolean, sun: SunTimes?, actions: LauncherActions, update: Update) {
+private fun LazyListScope.homePage(
+    settings: LauncherSettings,
+    stapelShown: Boolean,
+    searchShown: Boolean,
+    sun: SunTimes?,
+    scenes: List<Scene>,
+    actions: LauncherActions,
+    update: Update,
+) {
     item { HandTitle(stringResource(R.string.wallpaper), Modifier.padding(horizontal = 22.dp)) }
     item {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
-            Scene.entries.forEach { scene ->
+        // Built-in scenes, then the user's own pictures (hold one to adjust it), then "add".
+        LazyRow(contentPadding = PaddingValues(horizontal = 14.dp)) {
+            items(scenes, key = { it.id }) { scene ->
                 BubbleChoice(
-                    label = stringResource(scene.label),
-                    selected = !settings.autoScene && scene == settings.scene,
-                    onClick = { update { it.copy(scene = scene, autoScene = false) } },
-                    modifier = Modifier.weight(1f),
+                    label = scene.label(),
+                    selected = !settings.autoScene && scene.id == scenes.resolve(settings.scene).id,
+                    onClick = { update { it.copy(scene = scene.id, autoScene = false) } },
+                    onLongClick = if (scene.isCustom) ({ actions.editWallpaper(scene) }) else null,
+                    modifier = Modifier.width(84.dp),
+                ) { SceneThumb(scene, 54.dp) }
+            }
+            item(key = "add") {
+                BubbleChoice(
+                    label = stringResource(R.string.add_wallpaper),
+                    selected = false,
+                    onClick = actions::addWallpaper,
+                    modifier = Modifier.width(84.dp),
                 ) {
-                    Image(
-                        painter = painterResource(scene.res),
-                        contentDescription = stringResource(scene.label),
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.Center,
-                        modifier = Modifier.size(54.dp).clip(RoundedCornerShape(36)),
-                    )
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(54.dp).clip(RoundedCornerShape(36)).background(Card)) {
+                        Text("+", style = rowStyle.copy(fontSize = 28.sp))
+                    }
                 }
             }
         }
+    }
+    if (scenes.any { it.isCustom }) {
+        item { Text(stringResource(R.string.wallpaper_hold_hint), style = hintStyle, modifier = Modifier.padding(horizontal = 22.dp)) }
     }
     item {
         ToggleRow(
@@ -160,7 +181,7 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
         ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.PartlyCloudy, Ink) } } }
     }
     if (settings.autoScene) {
-        item { ScheduleEditor(settings.schedule, update, sun = sun) }
+        item { ScheduleEditor(settings.schedule, update, sun = sun, scenes = scenes) }
         item {
             ToggleRow(
                 label = stringResource(R.string.snow_in_winter),
@@ -168,6 +189,27 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
                 on = settings.snowInWinter,
                 onToggle = { update { it.copy(snowInWinter = !it.snowInWinter) } },
             ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.Snow, Ink) } } }
+        }
+        if (settings.snowInWinter) {
+            item {
+                val winter = scenes.resolve(settings.winterScene)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(onClickLabel = stringResource(R.string.cd_change_scene, winter.label())) {
+                            update { it.copy(winterScene = scenes.next(winter).id) }
+                        }
+                        .padding(horizontal = 22.dp, vertical = 6.dp),
+                ) {
+                    SceneThumb(winter, 44.dp)
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.winter_scene), style = rowStyle)
+                        Text(winter.label() + " · " + stringResource(R.string.tap_to_change), style = hintStyle)
+                    }
+                }
+            }
         }
     }
     item { HandTitle(stringResource(R.string.on_home_screen), Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
@@ -418,6 +460,7 @@ internal fun ScheduleEditor(
     update: ((LauncherSettings) -> LauncherSettings) -> Unit,
     initiallyEditing: SceneSlot? = null,
     sun: SunTimes? = null,
+    scenes: List<Scene> = Scene.BUILT_IN,
 ) {
     val is24 = DateFormat.is24HourFormat(LocalContext.current)
     val slots = schedule.sortedBy { it.minuteWith(sun) }
@@ -426,21 +469,18 @@ internal fun ScheduleEditor(
 
     Column(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 4.dp)) {
         slots.forEach { slot ->
-            val sceneName = stringResource(slot.scene.label)
+            val slotScene = scenes.resolve(slot.scene)
+            val sceneName = slotScene.label()
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                Image(
-                    painter = painterResource(slot.scene.res),
+                SceneThumb(
+                    slotScene,
+                    44.dp,
                     contentDescription = stringResource(R.string.cd_change_scene, sceneName),
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(36))
-                        .clickable(role = Role.Button) {
-                            val next = Scene.entries[(slot.scene.ordinal + 1) % Scene.entries.size]
-                            replace(slot, slot.copy(scene = next))
-                            if (editing == slot) editing = slot.copy(scene = next)
-                        },
+                    modifier = Modifier.clickable(role = Role.Button) {
+                        val next = scenes.next(slotScene).id
+                        replace(slot, slot.copy(scene = next))
+                        if (editing == slot) editing = slot.copy(scene = next)
+                    },
                 )
                 Spacer(Modifier.width(16.dp))
                 Column(
@@ -505,7 +545,7 @@ internal fun ScheduleEditor(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .clickable {
-                        val slot = SceneSlot(SceneSchedule.nextFreeMinute(slots), Scene.Mountain)
+                        val slot = SceneSlot(SceneSchedule.nextFreeMinute(slots), Scene.DEFAULT_ID)
                         update { s -> s.copy(schedule = s.schedule + slot) }
                         editing = slot
                     }
@@ -576,3 +616,18 @@ private fun TimeEditor(minute: Int, sun: SunEvent?, is24: Boolean, onDone: (Int,
 }
 
 private fun formatMinute(minute: Int, is24: Boolean): String = LocalTime.of(minute / 60, minute % 60).format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a", Locale.ENGLISH))
+
+/** A small round-cornered preview of a scene's motif. */
+@Composable
+private fun SceneThumb(scene: Scene, size: Dp, modifier: Modifier = Modifier, contentDescription: String? = scene.label()) {
+    Image(
+        painter = rememberScenePainter(scene),
+        contentDescription = contentDescription,
+        contentScale = ContentScale.Crop,
+        alignment = Alignment.Center,
+        modifier = Modifier.size(size).clip(RoundedCornerShape(36)).then(modifier),
+    )
+}
+
+/** The scene after [current] in this list, wrapping around. */
+private fun List<Scene>.next(current: Scene): Scene = this[(indexOfFirst { it.id == current.id } + 1).mod(size)]
