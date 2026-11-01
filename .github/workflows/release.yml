@@ -28,7 +28,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Check style, build and test
-        run: ./gradlew ktlintCheck assembleRelease testDebugUnitTest
+        run: ./gradlew ktlintCheck assembleRelease verifyRoborazziDebug
 
       - name: Publish the release with the APK
         env:

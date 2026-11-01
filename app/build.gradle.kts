@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jlleitschuh.gradle.ktlint")
+    id("io.github.takahirom.roborazzi")
 }
 
 android {
@@ -34,6 +35,14 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        // Robolectric renders our real fonts, strings and drawables for the screenshot tests.
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all {
+            // Robolectric reaches into java.io internals that newer JDKs lock away.
+            it.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED")
+        }
+    }
 }
 
 dependencies {
@@ -47,4 +56,14 @@ dependencies {
     implementation("androidx.core:core-ktx:1.17.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.77.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+roborazzi {
+    // Reference images live with the tests, so a review shows exactly what changed.
+    outputDir.set(file("src/test/screenshots"))
 }

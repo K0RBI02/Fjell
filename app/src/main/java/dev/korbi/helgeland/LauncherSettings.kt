@@ -5,6 +5,7 @@ import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import java.time.Clock
 import java.time.LocalDateTime
 
 /**
@@ -44,6 +45,9 @@ enum class Scene(
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
+
+/** Where the UI reads the time from: the system clock, or a fixed one in screenshot tests. */
+val LocalClock = staticCompositionLocalOf<Clock> { Clock.systemDefaultZone() }
 
 /** The active scene, for parts (like popup sheets) that redraw the wallpaper themselves. */
 val LocalScene = staticCompositionLocalOf { Scene.Mountain }
