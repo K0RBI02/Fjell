@@ -55,7 +55,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
@@ -209,10 +208,11 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
     val context = LocalView.current.context
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     // Re-keyed on lifecycle so the time is fresh the moment we come back to the foreground.
-    val now by produceState(LocalDateTime.now(), lifecycleState) {
+    val clock = LocalClock.current
+    val now by produceState(LocalDateTime.now(clock), lifecycleState) {
         while (true) {
-            value = LocalDateTime.now()
-            delay(60_000L - System.currentTimeMillis() % 60_000L)
+            value = LocalDateTime.now(clock)
+            delay(60_000L - clock.millis() % 60_000L)
         }
     }
     val timePattern = if (DateFormat.is24HourFormat(context)) "HH:mm" else "h:mm"
@@ -221,8 +221,8 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
     val subline = if (weather != null) "$date | ${weather.temperature}°C" else date
     // Only alarms within the next day are worth a glance on the home screen.
     val alarm = nextAlarm
-        ?.takeIf { it - System.currentTimeMillis() in 0..ALARM_HORIZON_MS }
-        ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(timePattern)) }
+        ?.takeIf { it - clock.millis() in 0..ALARM_HORIZON_MS }
+        ?.let { Instant.ofEpochMilli(it).atZone(clock.zone).format(DateTimeFormatter.ofPattern(timePattern)) }
     val noRipple = remember { MutableInteractionSource() }
     val sublineStyle = TextStyle(fontFamily = IndieFlower, fontSize = 21.sp, color = color, shadow = softShadow)
 

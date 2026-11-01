@@ -119,6 +119,7 @@ internal fun Drawer(
         }
     }
     // The "relevant" row: new apps first, then the most used (see Relevance).
+    val clock = LocalClock.current
     val recentApps = remember(apps, gridKeys, hiddenKeys, recentKeys, launchCounts, query, settings.drawerRecent) {
         if (query.isNotBlank() || !settings.drawerRecent) return@remember emptyList()
         val byKey = apps.associateBy { it.key }
@@ -128,7 +129,7 @@ internal fun Drawer(
             installedAt = { byKey[it]?.installedAt ?: 0L },
             launches = { launchCounts[it] ?: 0 },
             recent = recentKeys,
-            now = System.currentTimeMillis(),
+            now = clock.millis(),
             limit = RECENT_SHOWN,
         ).mapNotNull(byKey::get)
     }

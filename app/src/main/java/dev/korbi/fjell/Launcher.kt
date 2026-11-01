@@ -91,10 +91,11 @@ fun Launcher(
     actions: LauncherActions,
 ) {
     // With the automatic scene on, the wallpaper follows the clock; checked once a minute.
-    val now by produceState(LocalDateTime.now(), settings.autoScene) {
+    val clock = LocalClock.current
+    val now by produceState(LocalDateTime.now(clock), settings.autoScene) {
         while (settings.autoScene) {
-            value = LocalDateTime.now()
-            delay(60_000L - System.currentTimeMillis() % 60_000L)
+            value = LocalDateTime.now(clock)
+            delay(60_000L - clock.millis() % 60_000L)
         }
     }
     val chosenSettings = settings
