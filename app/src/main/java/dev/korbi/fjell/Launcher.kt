@@ -51,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import java.time.LocalDateTime
+import kotlinx.coroutines.delay
 
 val Lato = FontFamily(
     Font(R.font.lato_thin, FontWeight.Thin),
@@ -88,6 +90,16 @@ fun Launcher(
     homePresses: Int,
     actions: LauncherActions,
 ) {
+    // With the automatic scene on, the wallpaper follows the clock; checked once a minute.
+    val now by produceState(LocalDateTime.now(), settings.autoScene) {
+        while (settings.autoScene) {
+            value = LocalDateTime.now()
+            delay(60_000L - System.currentTimeMillis() % 60_000L)
+        }
+    }
+    val chosenSettings = settings
+    @Suppress("NAME_SHADOWING")
+    val settings = settings.copy(scene = settings.sceneAt(now))
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
     var drawerSearch by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
@@ -170,7 +182,7 @@ fun Launcher(
                     sampleApp = gridKeys.firstNotNullOfOrNull { key -> apps.firstOrNull { it.key == key } } ?: apps.firstOrNull(),
                     globalStyle = globalIconStyle,
                     iconPacks = iconPacks,
-                    settings = settings,
+                    settings = chosenSettings,
                     stapelShown = MainActivity.STAPEL_KEY in gridKeys,
                     searchShown = GridSlots.SEARCH_KEY in gridKeys,
                     hiddenApps = apps.filter { it.key in hiddenKeys },

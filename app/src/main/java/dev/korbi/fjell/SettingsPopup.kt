@@ -123,8 +123,8 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
             Scene.entries.forEach { scene ->
                 BubbleChoice(
                     label = stringResource(scene.label),
-                    selected = scene == settings.scene,
-                    onClick = { update { it.copy(scene = scene) } },
+                    selected = !settings.autoScene && scene == settings.scene,
+                    onClick = { update { it.copy(scene = scene, autoScene = false) } },
                     modifier = Modifier.weight(1f),
                 ) {
                     Image(
@@ -137,6 +137,14 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
                 }
             }
         }
+    }
+    item {
+        ToggleRow(
+            label = stringResource(R.string.auto_scene),
+            hint = stringResource(R.string.auto_scene_hint),
+            on = settings.autoScene,
+            onToggle = { update { it.copy(autoScene = !it.autoScene) } },
+        ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.PartlyCloudy, Ink) } } }
     }
     item { HandTitle(stringResource(R.string.on_home_screen), Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     item {

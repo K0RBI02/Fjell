@@ -270,7 +270,7 @@ private fun skyLabel(sky: Sky): Int = when (sky) {
 }
 
 /** The current sky as a small line glyph, in the same hand as the bell. */
-private fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
+internal fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
     val stroke = size.minDimension * 0.1f
     val w = size.width
     val h = size.height
