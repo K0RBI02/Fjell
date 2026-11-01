@@ -97,7 +97,6 @@ internal fun AppGrid(
     dotPackages: Set<String>,
     noDots: Set<String>,
     onOpenDrawer: () -> Unit,
-    onOpenSearch: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val columns = MainActivity.GRID_COLUMNS
@@ -110,7 +109,6 @@ internal fun AppGrid(
     val opensSettings by rememberUpdatedState(stapelOpensSettings)
     val searchHasMic by rememberUpdatedState(searchMic)
     val openDrawer by rememberUpdatedState(onOpenDrawer)
-    val openSearch by rememberUpdatedState(onOpenSearch)
     val openSettings by rememberUpdatedState(onOpenSettings)
 
     val openLabel = stringResource(R.string.cd_open)
@@ -201,7 +199,7 @@ internal fun AppGrid(
                                         GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
                                         // The mic owns a square at the bar's right end.
                                         is GridItem.Search ->
-                                            if (searchHasMic && down.position.x > size.width - size.height) actions.openVoiceSearch() else openSearch()
+                                            if (searchHasMic && down.position.x > size.width - size.height) actions.openVoiceSearch() else actions.openGoogleSearch()
                                         GridItem.Covered -> Unit
                                     }
                                     Press.Cancel -> Unit
@@ -236,7 +234,7 @@ internal fun AppGrid(
                                 when (item) {
                                     is GridItem.App -> actions.launch(item.entry)
                                     GridItem.Stapel -> if (opensSettings) openSettings() else openDrawer()
-                                    is GridItem.Search -> openSearch()
+                                    is GridItem.Search -> actions.openGoogleSearch()
                                     GridItem.Covered -> Unit
                                 }
                                 true

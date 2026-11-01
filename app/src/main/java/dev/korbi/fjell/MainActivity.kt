@@ -366,6 +366,11 @@ class MainActivity : ComponentActivity() {
             else Toast.makeText(this@MainActivity, getString(R.string.toast_no_row_space), Toast.LENGTH_SHORT).show()
         }
 
+        override fun openGoogleSearch() {
+            val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity")
+            if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
+        }
+
         override fun searchWeb(query: String) {
             val search = Intent(Intent.ACTION_WEB_SEARCH).putExtra(SearchManager.QUERY, query)
             if (!startSafely(search)) {
@@ -462,6 +467,7 @@ class MainActivity : ComponentActivity() {
         const val GRID_SIZE = GRID_COLUMNS * 3
 
         const val STAPEL_KEY = GridSlots.STAPEL_KEY
+        private const val GOOGLE_APP = "com.google.android.googlequicksearchbox"
         const val WEATHER_MAX_AGE_MS = 30 * 60 * 1000L
     }
 }
@@ -487,6 +493,8 @@ interface LauncherActions {
     /** [span] is 2 or 4 slots. */
     fun setSearchWidth(span: Int)
     fun openVoiceSearch()
+    /** The search bar widget: straight into Google's own search screen. */
+    fun openGoogleSearch()
     fun searchWeb(query: String)
     fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
     suspend fun searchContacts(query: String): List<ContactHit>
