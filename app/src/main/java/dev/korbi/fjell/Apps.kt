@@ -4,7 +4,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
+import android.content.pm.ShortcutInfo
+import android.graphics.drawable.Drawable
 import android.os.UserHandle
+import androidx.compose.ui.graphics.ImageBitmap
 import java.text.Collator
 
 data class AppEntry(
@@ -21,6 +24,9 @@ data class AppEntry(
             key.startsWith("$packageName/") && key.endsWith("#$userHash")
     }
 }
+
+/** One of an app's quick actions, ready to show in its menu. */
+data class AppShortcut(val id: String, val label: String, val icon: ImageBitmap?)
 
 class AppRepository(private val context: Context) {
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
@@ -47,6 +53,29 @@ class AppRepository(private val context: Context) {
 
     fun openAppInfo(app: AppEntry) {
         launcherApps.startAppDetailsActivity(app.component, app.user, null, null)
+    }
+
+    /**
+     * The app's quick actions (its manifest shortcuts first, then dynamic ones by rank),
+     * as the system launcher would show them. Only the default launcher may ask.
+     */
+    fun shortcuts(app: AppEntry, limit: Int = 4): List<ShortcutInfo> {
+        if (!launcherApps.hasShortcutHostPermission()) return emptyList()
+        val query = LauncherApps.ShortcutQuery()
+            .setPackage(app.component.packageName)
+            .setActivity(app.component)
+            .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC)
+        return runCatching { launcherApps.getShortcuts(query, app.user) }.getOrNull().orEmpty()
+            .filter { it.isEnabled }
+            .sortedWith(compareBy({ !it.isDeclaredInManifest }, { it.rank }))
+            .take(limit)
+    }
+
+    fun shortcutIcon(shortcut: ShortcutInfo, density: Int): Drawable? =
+        runCatching { launcherApps.getShortcutIconDrawable(shortcut, density) }.getOrNull()
+
+    fun startShortcut(shortcut: ShortcutInfo) {
+        launcherApps.startShortcut(shortcut, null, null)
     }
 
     /**

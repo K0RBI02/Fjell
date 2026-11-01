@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -60,6 +61,9 @@ class MainActivity : ComponentActivity() {
     private val settings = mutableStateOf(LauncherSettings())
     private val nowPlaying = mutableStateOf<NowPlaying?>(null)
     private val dotPackages = mutableStateOf<Set<String>>(emptySet())
+
+    /** Shortcuts shown in the last menus, so a tap can start the exact one. */
+    private val shortcutsById = HashMap<String, ShortcutInfo>()
     private val noDots = mutableStateOf<Set<String>>(emptySet())
     private val media by lazy { MediaWatcher(this) { nowPlaying.value = it } }
 
@@ -251,6 +255,20 @@ class MainActivity : ComponentActivity() {
             prefs.recent = recent.value
             launchCounts.value = launchCounts.value + (app.key to (launchCounts.value[app.key] ?: 0) + 1)
             prefs.launchCounts = launchCounts.value
+        }
+
+        override suspend fun shortcuts(app: AppEntry, iconPx: Int): List<AppShortcut> = withContext(Dispatchers.Default) {
+            val found = repo.shortcuts(app)
+            synchronized(shortcutsById) { found.forEach { shortcutsById[it.id] = it } }
+            found.map { info ->
+                val icon = repo.shortcutIcon(info, resources.displayMetrics.densityDpi)?.let { IconRender.render(it, iconPx).asImageBitmap() }
+                AppShortcut(info.id, (info.shortLabel ?: info.longLabel ?: "").toString(), icon)
+            }
+        }
+
+        override fun launchShortcut(id: String) {
+            val info = synchronized(shortcutsById) { shortcutsById[id] } ?: return
+            runCatching { repo.startShortcut(info) }
         }
 
         override fun appInfo(app: AppEntry) {
@@ -483,6 +501,8 @@ private fun Context.expandNotifications() {
 
 interface LauncherActions {
     fun launch(app: AppEntry)
+    suspend fun shortcuts(app: AppEntry, iconPx: Int): List<AppShortcut>
+    fun launchShortcut(id: String)
     fun appInfo(app: AppEntry)
     fun uninstall(app: AppEntry)
     fun toggleGrid(app: AppEntry)

@@ -3,6 +3,7 @@ package dev.korbi.fjell
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -148,6 +151,15 @@ fun AppMenuPopup(
             EditableName(app, onRename = { label -> dismissThen { actions.rename(app, label) } })
         }
         MenuDivider()
+        // The app's own quick actions, like the system launcher shows them.
+        val iconPx = with(LocalDensity.current) { 20.dp.roundToPx() }
+        val shortcuts by produceState(emptyList<AppShortcut>(), app.key) { value = actions.shortcuts(app, iconPx) }
+        if (shortcuts.isNotEmpty()) {
+            shortcuts.forEach { shortcut ->
+                ShortcutRow(shortcut) { dismissThen { actions.launchShortcut(shortcut.id) } }
+            }
+            MenuDivider()
+        }
         MenuRow(if (inGrid) stringResource(R.string.menu_move_to_stack) else stringResource(R.string.menu_add_to_home), glyph = DrawScope::drawGridGlyph) { dismissThen { actions.toggleGrid(app) } }
         MenuRow(stringResource(R.string.menu_change_icon), glyph = DrawScope::drawIconGlyph) { dismissThen(onOpenIconPicker) }
         if (!inGrid) {
@@ -211,6 +223,23 @@ fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss
         MenuRow(stringResource(R.string.microphone), glyph = DrawScope::drawMicGlyph, checked = mic) { actions.updateSettings { it.copy(searchMic = !mic) } }
         MenuDivider()
         MenuRow(stringResource(R.string.menu_remove_from_home), color = DangerColor, glyph = DrawScope::drawTrashGlyph) { dismissThen { actions.setSearchShown(false) } }
+    }
+}
+
+@Composable
+private fun ShortcutRow(shortcut: AppShortcut, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 11.dp),
+    ) {
+        Box(Modifier.size(20.dp)) {
+            shortcut.icon?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize()) }
+        }
+        Spacer(Modifier.width(16.dp))
+        Text(shortcut.label, maxLines = 1, overflow = TextOverflow.Ellipsis, style = TextStyle(fontFamily = Lato, fontSize = 16.sp, color = PopupText))
     }
 }
 
