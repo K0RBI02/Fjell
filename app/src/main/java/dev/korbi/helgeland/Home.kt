@@ -195,7 +195,6 @@ internal fun Home(
                     dotPackages = dotPackages,
                     noDots = noDots,
                     onOpenDrawer = { openDrawer() },
-                    onOpenSearch = { openSearch() },
                     onOpenSettings = { openSettings() },
                 )
             }
