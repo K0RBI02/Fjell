@@ -72,6 +72,7 @@ data class LauncherSettings(
     val largeClock: Boolean = true,
     val showWeather: Boolean = true,
     val showAlarm: Boolean = true,
+    val showEvents: Boolean = false,
     val drawerRecent: Boolean = true,
     val drawerIndex: Boolean = true,
     val drawerSections: Boolean = true,
@@ -95,6 +96,7 @@ data class LauncherSettings(
             .putBoolean("largeClock", largeClock)
             .putBoolean("showWeather", showWeather)
             .putBoolean("showAlarm", showAlarm)
+            .putBoolean("showEvents", showEvents)
             .putBoolean("drawerRecent", drawerRecent)
             .putBoolean("drawerIndex", drawerIndex)
             .putBoolean("drawerSections", drawerSections)
@@ -118,6 +120,7 @@ data class LauncherSettings(
                 largeClock = sp.getBoolean("largeClock", d.largeClock),
                 showWeather = sp.getBoolean("showWeather", d.showWeather),
                 showAlarm = sp.getBoolean("showAlarm", d.showAlarm),
+                showEvents = sp.getBoolean("showEvents", d.showEvents),
                 drawerRecent = sp.getBoolean("drawerRecent", d.drawerRecent),
                 drawerIndex = sp.getBoolean("drawerIndex", d.drawerIndex),
                 drawerSections = sp.getBoolean("drawerSections", d.drawerSections),

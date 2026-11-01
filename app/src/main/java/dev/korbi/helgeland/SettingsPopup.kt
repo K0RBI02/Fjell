@@ -217,6 +217,11 @@ private fun LazyListScope.clockPage(settings: LauncherSettings, update: Update) 
             GlyphBubble { Canvas(Modifier.size(20.dp)) { drawBellGlyph(Ink) } }
         }
     }
+    item {
+        ToggleRow(label = stringResource(R.string.next_event), hint = stringResource(R.string.next_event_hint), on = settings.showEvents, onToggle = { update { it.copy(showEvents = !it.showEvents) } }) {
+            GlyphBubble { Canvas(Modifier.size(20.dp)) { drawCalendarGlyph(Ink) } }
+        }
+    }
 }
 
 private fun LazyListScope.stapelPage(settings: LauncherSettings, hiddenApps: List<AppEntry>, actions: LauncherActions, update: Update) {

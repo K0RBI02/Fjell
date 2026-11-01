@@ -31,8 +31,10 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
@@ -48,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,6 +73,7 @@ internal fun Home(
     gridKeys: List<String?>,
     weather: WeatherNow?,
     nextAlarm: Long?,
+    events: List<CalendarEvent>,
     nowPlaying: NowPlaying?,
     dotPackages: Set<String>,
     noDots: Set<String>,
@@ -147,6 +151,7 @@ internal fun Home(
             large = settings.largeClock,
             weather = weather,
             nextAlarm = nextAlarm,
+            events = events,
             actions = actions,
             modifier = Modifier.statusBarsPadding().padding(start = 30.dp, top = 64.dp),
         )
@@ -204,7 +209,15 @@ internal fun Home(
 }
 
 @Composable
-private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm: Long?, actions: LauncherActions, modifier: Modifier = Modifier) {
+private fun Clock(
+    color: Color,
+    large: Boolean,
+    weather: WeatherNow?,
+    nextAlarm: Long?,
+    events: List<CalendarEvent>,
+    actions: LauncherActions,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalView.current.context
     val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     // Re-keyed on lifecycle so the time is fresh the moment we come back to the foreground.
@@ -219,10 +232,13 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
     val time = now.format(DateTimeFormatter.ofPattern(timePattern))
     val date = now.format(DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH))
     val subline = if (weather != null) "$date | ${weather.temperature}°C" else date
+
     // Only alarms within the next day are worth a glance on the home screen.
-    val alarm = nextAlarm
-        ?.takeIf { it - clock.millis() in 0..ALARM_HORIZON_MS }
-        ?.let { Instant.ofEpochMilli(it).atZone(clock.zone).format(DateTimeFormatter.ofPattern(timePattern)) }
+    fun clockTime(millis: Long) = Instant.ofEpochMilli(millis).atZone(clock.zone).format(DateTimeFormatter.ofPattern(timePattern))
+    val alarm = nextAlarm?.takeIf { it - clock.millis() in 0..ALARM_HORIZON_MS }?.let(::clockTime)
+    // A meeting in the next few hours matters more than tomorrow's alarm, so it takes the spot.
+    // Re-evaluated with every minute tick, so a started event drops off on its own.
+    val event = Calendar.next(events, clock.millis())
     val noRipple = remember { MutableInteractionSource() }
     val sublineStyle = TextStyle(fontFamily = IndieFlower, fontSize = 21.sp, color = color, shadow = softShadow)
 
@@ -242,10 +258,25 @@ private fun Clock(color: Color, large: Boolean, weather: WeatherNow?, nextAlarm:
                 val skyLabel = stringResource(skyLabel(weather.sky))
                 Canvas(Modifier.size(17.dp).semantics { contentDescription = skyLabel }) { drawSkyGlyph(weather.sky, color) }
             }
-            if (alarm != null) {
+            if (event != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable(noRipple, null) { actions.openClock() },
+                    modifier = Modifier.clickable(noRipple, null) { actions.openEvent(event) },
+                ) {
+                    Text(" | ", style = sublineStyle)
+                    val eventLabel = stringResource(R.string.cd_event)
+                    Canvas(Modifier.size(15.dp).semantics { contentDescription = eventLabel }) { drawCalendarGlyph(color) }
+                    Text(
+                        " ${clockTime(event.begin)} ${event.title}",
+                        style = sublineStyle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else if (alarm != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(noRipple, null) { actions.openNextAlarm() },
                 ) {
                     Text(" | ", style = sublineStyle)
                     val alarmLabel = stringResource(R.string.cd_alarm)
@@ -264,6 +295,7 @@ private fun skyLabel(sky: Sky): Int = when (sky) {
     Sky.Clear -> R.string.sky_clear
     Sky.ClearNight -> R.string.sky_clear_night
     Sky.PartlyCloudy -> R.string.sky_partly_cloudy
+    Sky.PartlyCloudyNight -> R.string.sky_partly_cloudy_night
     Sky.Cloudy -> R.string.sky_cloudy
     Sky.Fog -> R.string.sky_fog
     Sky.Rain -> R.string.sky_rain
@@ -294,16 +326,21 @@ internal fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
         }
         drawPath(path, color, style = Stroke(stroke, join = StrokeJoin.Round))
     }
+    fun moon(center: Offset, radius: Float) {
+        // A crescent: the full disc minus a shifted one.
+        val disc = Path().apply { addOval(Rect(center, radius)) }
+        val bite = Path().apply { addOval(Rect(center + Offset(radius * 0.56f, -radius * 0.44f), radius * 0.83f)) }
+        drawPath(Path.combine(PathOperation.Difference, disc, bite), color, style = Stroke(stroke, join = StrokeJoin.Round))
+    }
     when (sky) {
         Sky.Clear -> sun(center, w * 0.2f)
-        Sky.ClearNight -> {
-            // A crescent: the full disc minus a shifted one.
-            val disc = Path().apply { addOval(Rect(center, w * 0.36f)) }
-            val bite = Path().apply { addOval(Rect(center + Offset(w * 0.2f, -h * 0.16f), w * 0.3f)) }
-            drawPath(Path.combine(PathOperation.Difference, disc, bite), color, style = Stroke(stroke, join = StrokeJoin.Round))
-        }
+        Sky.ClearNight -> moon(center, w * 0.36f)
         Sky.PartlyCloudy -> {
             sun(Offset(w * 0.34f, h * 0.32f), w * 0.13f)
+            cloud(h * 0.5f)
+        }
+        Sky.PartlyCloudyNight -> {
+            moon(Offset(w * 0.36f, h * 0.3f), w * 0.22f)
             cloud(h * 0.5f)
         }
         Sky.Cloudy -> cloud(h * 0.36f)
@@ -344,4 +381,14 @@ internal fun DrawScope.drawBellGlyph(color: Color) {
     }
     drawPath(bell, color, style = Stroke(stroke, join = StrokeJoin.Round))
     drawCircle(color, stroke * 0.9f, Offset(w * 0.5f, h * 0.86f))
+}
+
+/** A little calendar page, in the same hand as the bell. */
+internal fun DrawScope.drawCalendarGlyph(color: Color) {
+    val stroke = size.minDimension * 0.11f
+    val w = size.width
+    val h = size.height
+    drawRoundRect(color, Offset(w * 0.12f, h * 0.2f), Size(w * 0.76f, h * 0.68f), CornerRadius(w * 0.14f), style = Stroke(stroke))
+    drawLine(color, Offset(w * 0.12f, h * 0.42f), Offset(w * 0.88f, h * 0.42f), stroke)
+    for (x in listOf(0.34f, 0.66f)) drawLine(color, Offset(w * x, h * 0.1f), Offset(w * x, h * 0.28f), stroke, StrokeCap.Round)
 }

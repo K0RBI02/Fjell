@@ -17,7 +17,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 
 /** What the clock line shows of the weather. */
-enum class Sky { Clear, ClearNight, PartlyCloudy, Cloudy, Fog, Rain, Snow, Thunder }
+enum class Sky { Clear, ClearNight, PartlyCloudy, PartlyCloudyNight, Cloudy, Fog, Rain, Snow, Thunder }
 
 data class WeatherNow(val temperature: Int, val sky: Sky)
 
@@ -55,7 +55,7 @@ object Weather {
     /** Maps a WMO weather code (as Open-Meteo reports it) to one of our glyphs. */
     fun skyFor(code: Int, isDay: Boolean): Sky = when (code) {
         0 -> if (isDay) Sky.Clear else Sky.ClearNight
-        1, 2 -> Sky.PartlyCloudy
+        1, 2 -> if (isDay) Sky.PartlyCloudy else Sky.PartlyCloudyNight
         3 -> Sky.Cloudy
         45, 48 -> Sky.Fog
         in 51..67, in 80..82 -> Sky.Rain
