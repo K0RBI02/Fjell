@@ -8,6 +8,7 @@ Each version's section becomes the notes of its GitHub release.
 - Wallpaper timetable: pick which scene shows from which time, plus optional snow all winter
 - Next calendar event (within 4 hours) can take the alarm's spot on the clock line
 - Small music wave next to the track title
+- Wallpaper previews in the settings show the scene's motif
 
 ### Improved
 - Long track titles scroll like a car radio, with soft edges
@@ -17,6 +18,9 @@ Each version's section becomes the notes of its GitHub release.
 
 ### Fixed
 - A few clouds at night showed the sun instead of the moon
+- The search bar could reopen a page left open in the Google app instead of a fresh search
+- Search lists names that start with what you typed first ("ma" → Maps, Maces before Amazon)
+- Simple icons crashed on Android 10–12
 
 ## 1.0
 

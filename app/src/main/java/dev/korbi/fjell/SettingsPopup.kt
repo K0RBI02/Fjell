@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +29,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerDefaults
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 /** The settings popup's pages: an overview of categories, then one page per category. */
 private enum class SettingsPage(@StringRes val title: Int, @StringRes val hint: Int, val glyph: DrawScope.(Color) -> Unit) {
@@ -139,7 +143,7 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
                         painter = painterResource(scene.res),
                         contentDescription = stringResource(scene.label),
                         contentScale = ContentScale.Crop,
-                        alignment = Alignment.BottomCenter,
+                        alignment = Alignment.Center,
                         modifier = Modifier.size(54.dp).clip(RoundedCornerShape(36)),
                     )
                 }
@@ -494,7 +498,16 @@ internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSetting
 @Composable
 private fun TimeEditor(minute: Int, is24: Boolean, onDone: (Int) -> Unit, onCancel: () -> Unit) {
     val state = rememberTimePickerState(initialHour = minute / 60, initialMinute = minute % 60, is24Hour = is24)
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    // The dial is tall; scroll the sheet so it and its buttons are fully in view when it opens.
+    val bringIntoView = remember { BringIntoViewRequester() }
+    LaunchedEffect(Unit) {
+        delay(50) // let it be measured first
+        bringIntoView.bringIntoView()
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoView).padding(vertical = 8.dp),
+    ) {
         // The dial draws its colon in onSurface, which is dark ink in our light menu scheme.
         MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(onSurface = PopupText)) {
             TimePicker(

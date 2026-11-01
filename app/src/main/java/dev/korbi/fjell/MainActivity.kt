@@ -439,8 +439,11 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun openGoogleSearch() {
-            val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity")
-            if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH))
+            // A fresh task every time: otherwise whatever was last open inside the Google app
+            // (say, a link in its browser tab) comes back instead of the search screen.
+            val fresh = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            val google = Intent(Intent.ACTION_MAIN).setClassName(GOOGLE_APP, "$GOOGLE_APP.SearchActivity").addFlags(fresh)
+            if (!startSafely(google)) startSafely(Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH).addFlags(fresh))
         }
 
         override fun searchWeb(query: String) {

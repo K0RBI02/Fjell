@@ -114,8 +114,10 @@ internal fun Drawer(
         if (q.isEmpty()) {
             apps.filter { it.key !in gridKeys && it.key !in hiddenKeys }
         } else {
-            // Search hits: most used first, ties alphabetical (stable sort).
-            apps.filter { it.label.contains(q, ignoreCase = true) }.sortedByDescending { launchCounts[it.key] ?: 0 }
+            // Best matching names first ("ma" → Maps before Amazon), then most used, ties alphabetical (stable sort).
+            apps.mapNotNull { app -> SearchRank.tier(app.label, q)?.let { app to it } }
+                .sortedWith(compareBy<Pair<AppEntry, Int>> { it.second }.thenByDescending { launchCounts[it.first.key] ?: 0 })
+                .map { it.first }
         }
     }
     // The "relevant" row: new apps first, then the most used (see Relevance).

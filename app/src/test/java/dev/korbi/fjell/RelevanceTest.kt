@@ -45,4 +45,18 @@ class RelevanceTest {
         val launches = (1..9).associate { "app$it" to it }
         assertEquals(listOf("app9", "app8"), pick(installed, launches, limit = 2))
     }
+
+    @Test
+    fun `search ranks name starts, then word starts, then the rest`() {
+        assertEquals(0, SearchRank.tier("Maps", "ma"))
+        assertEquals(1, SearchRank.tier("Proton Mail", "ma"))
+        assertEquals(1, SearchRank.tier("MediaMarkt", "ma"))
+        assertEquals(2, SearchRank.tier("Amazon Shopping", "ma"))
+        assertEquals(null, SearchRank.tier("Discord", "ma"))
+    }
+
+    @Test
+    fun `a later word start beats an earlier inner match`() {
+        assertEquals(1, SearchRank.tier("Gmail Mail", "mai"))
+    }
 }

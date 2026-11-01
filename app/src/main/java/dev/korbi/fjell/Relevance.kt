@@ -29,3 +29,31 @@ object Relevance {
         return (fresh + used).take(limit)
     }
 }
+
+/** Orders search hits: names starting with the query, then words starting with it, then the rest. */
+object SearchRank {
+    /** 0 = the name starts with [query], 1 = a word in it does, 2 = it's somewhere inside, null = no match. */
+    fun tier(label: String, query: String): Int? {
+        if (query.isEmpty()) return null
+        var best: Int? = null
+        var from = 0
+        while (true) {
+            val i = label.indexOf(query, from, ignoreCase = true)
+            if (i < 0) return best
+            val tier = when {
+                i == 0 -> 0
+                isWordStart(label, i) -> 1
+                else -> 2
+            }
+            if (tier == 0) return 0
+            best = minOf(best ?: tier, tier)
+            from = i + 1
+        }
+    }
+
+    /** After a space or symbol, or a capital inside a word ("Media|Markt"). */
+    private fun isWordStart(label: String, i: Int): Boolean {
+        val before = label[i - 1]
+        return !before.isLetterOrDigit() || (label[i].isUpperCase() && before.isLowerCase())
+    }
+}
