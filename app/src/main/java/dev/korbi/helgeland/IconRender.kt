@@ -11,6 +11,7 @@ import android.graphics.Rect
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.os.Build
 import kotlin.math.abs
 
 /** Draws icons in the launcher's bubble shape, in each of the available styles. */
@@ -71,7 +72,8 @@ object IconRender {
      */
     fun monochrome(original: Drawable?, size: Int, bubble: Int): Bitmap {
         val glyph = glyphFor(bubble)
-        val mono = (original as? AdaptiveIconDrawable)?.monochrome
+        // Monochrome layers arrived with Android 13; older phones always get the silhouette.
+        val mono = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) (original as? AdaptiveIconDrawable)?.monochrome else null
         if (mono != null) {
             mono.mutate().setTint(glyph)
             return render(AdaptiveIconDrawable(ColorDrawable(bubble), mono), size)

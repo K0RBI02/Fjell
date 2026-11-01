@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Runs ktlint before a commit that touches Kotlin, so style slips never reach CI.
+# Enable once per clone: git config core.hooksPath .githooks
+git diff --cached --name-only --diff-filter=ACMR | grep -qE '\.kts?$' || exit 0
+./gradlew --quiet ktlintCheck || {
+    echo "ktlint found style problems; './gradlew ktlintFormat' fixes most of them." >&2
+    exit 1
+}
