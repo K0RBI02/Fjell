@@ -20,8 +20,7 @@ object GridSlots {
         return start..end
     }
 
-    fun withoutSearch(slots: List<String?>): List<String?> =
-        slots.map { if (it == SEARCH_KEY || it == COVERED) null else it }
+    fun withoutSearch(slots: List<String?>): List<String?> = slots.map { if (it == SEARCH_KEY || it == COVERED) null else it }
 
     /** Puts a search bar of [span] slots into the first row with room, top row first. Null if no row has room. */
     fun placeSearch(slots: List<String?>, span: Int, columns: Int): List<String?>? {

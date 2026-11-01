@@ -244,7 +244,12 @@ internal fun AppGrid(
                                 true
                             }
                             if (item is GridItem.Search && searchHasMic) {
-                                customActions = listOf(CustomAccessibilityAction(voiceLabel) { actions.openVoiceSearch(); true })
+                                customActions = listOf(
+                                    CustomAccessibilityAction(voiceLabel) {
+                                        actions.openVoiceSearch()
+                                        true
+                                    },
+                                )
                             }
                         },
                 ) {
@@ -344,8 +349,10 @@ fun StapelIcon(size: Dp) {
     ) {
         val step = this.size.minDimension * 0.18f
         val radius = this.size.minDimension * 0.045f
-        for (row in -1..1) for (col in -1..1) {
-            drawCircle(dot, radius, center + Offset(col * step, row * step))
+        for (row in -1..1) {
+            for (col in -1..1) {
+                drawCircle(dot, radius, center + Offset(col * step, row * step))
+            }
         }
     }
 }

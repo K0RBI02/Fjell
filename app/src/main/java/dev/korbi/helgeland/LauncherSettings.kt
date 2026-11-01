@@ -27,7 +27,8 @@ enum class Scene(
 ) {
     Mountain(R.drawable.wp_mountain, R.string.scene_mountain, 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
     Pole(R.drawable.wp_pole, R.string.scene_pole, 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
-    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true);
+    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
+    ;
 
     companion object {
         /** The automatic choice: snow all through winter, otherwise the mountain by day and the pole at night. */
@@ -129,7 +130,6 @@ data class LauncherSettings(
         }
 
         /** An unknown stored name (renamed or removed option) falls back to the default. */
-        private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E =
-            enumValues<E>().firstOrNull { it.name == name } ?: default
+        private inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E = enumValues<E>().firstOrNull { it.name == name } ?: default
     }
 }

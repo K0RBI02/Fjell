@@ -98,6 +98,7 @@ fun Launcher(
         }
     }
     val chosenSettings = settings
+
     @Suppress("NAME_SHADOWING")
     val settings = settings.copy(scene = settings.sceneAt(now))
     var drawerOpen by rememberSaveable { mutableStateOf(false) }

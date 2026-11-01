@@ -11,8 +11,7 @@ import kotlinx.coroutines.withContext
 data class ContactHit(val name: String, val uri: Uri, val number: String?)
 
 object Contacts {
-    fun hasAccess(context: Context): Boolean =
-        context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+    fun hasAccess(context: Context): Boolean = context.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
 
     /** Up to [limit] contacts whose name matches [query]; empty without permission. */
     suspend fun search(context: Context, query: String, limit: Int = 4): List<ContactHit> = withContext(Dispatchers.IO) {

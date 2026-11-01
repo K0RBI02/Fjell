@@ -89,8 +89,11 @@ class MainActivity : ComponentActivity() {
         uri ?: return@registerForActivityResult
         lifecycleScope.launch {
             val saved = withContext(Dispatchers.IO) { icons.saveCustom(app, uri) }
-            if (saved) setIconOverride(app, IconStyle.Custom)
-            else Toast.makeText(this@MainActivity, getString(R.string.toast_picture_failed), Toast.LENGTH_SHORT).show()
+            if (saved) {
+                setIconOverride(app, IconStyle.Custom)
+            } else {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_picture_failed), Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -374,14 +377,20 @@ class MainActivity : ComponentActivity() {
 
         override fun setSearchShown(shown: Boolean) {
             val placed = if (shown) GridSlots.placeSearch(grid.value, 2, GRID_COLUMNS) else GridSlots.withoutSearch(grid.value)
-            if (placed != null) setGrid(placed)
-            else Toast.makeText(this@MainActivity, getString(R.string.toast_search_needs_space), Toast.LENGTH_SHORT).show()
+            if (placed != null) {
+                setGrid(placed)
+            } else {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_search_needs_space), Toast.LENGTH_SHORT).show()
+            }
         }
 
         override fun setSearchWidth(span: Int) {
             val resized = GridSlots.resizeSearch(grid.value, span, GRID_COLUMNS)
-            if (resized != null) setGrid(resized)
-            else Toast.makeText(this@MainActivity, getString(R.string.toast_no_row_space), Toast.LENGTH_SHORT).show()
+            if (resized != null) {
+                setGrid(resized)
+            } else {
+                Toast.makeText(this@MainActivity, getString(R.string.toast_no_row_space), Toast.LENGTH_SHORT).show()
+            }
         }
 
         override fun openGoogleSearch() {
@@ -476,8 +485,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /** False if nothing on the phone handles [intent]. */
-    private fun startSafely(intent: Intent): Boolean =
-        runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+    private fun startSafely(intent: Intent): Boolean = runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
     companion object {
         const val GRID_COLUMNS = 4
@@ -513,12 +521,14 @@ interface LauncherActions {
     /** [span] is 2 or 4 slots. */
     fun setSearchWidth(span: Int)
     fun openVoiceSearch()
+
     /** The search bar widget: straight into Google's own search screen. */
     fun openGoogleSearch()
     fun searchWeb(query: String)
     fun updateSettings(change: (LauncherSettings) -> LauncherSettings)
     suspend fun searchContacts(query: String): List<ContactHit>
     fun openContact(contact: ContactHit)
+
     /** Calls straight away once the call permission is granted; otherwise opens the dialer with the number. */
     fun callContact(contact: ContactHit)
     fun copyToClipboard(text: String)

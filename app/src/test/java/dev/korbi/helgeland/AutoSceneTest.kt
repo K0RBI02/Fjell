@@ -1,8 +1,8 @@
 package dev.korbi.helgeland
 
+import java.time.LocalDateTime
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.LocalDateTime
 
 class AutoSceneTest {
     private fun at(month: Int, hour: Int) = Scene.automatic(LocalDateTime.of(2026, month, 15, hour, 0))

@@ -1,5 +1,6 @@
 package dev.korbi.helgeland
 
+import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
 import android.media.MediaMetadata
@@ -8,7 +9,6 @@ import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Handler
 import android.os.Looper
-import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import androidx.core.app.NotificationManagerCompat
@@ -133,7 +133,6 @@ class MediaWatcher(private val context: Context, private val onChange: (NowPlayi
     }
 
     companion object {
-        fun hasAccess(context: Context): Boolean =
-            context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context)
+        fun hasAccess(context: Context): Boolean = context.packageName in NotificationManagerCompat.getEnabledListenerPackages(context)
     }
 }

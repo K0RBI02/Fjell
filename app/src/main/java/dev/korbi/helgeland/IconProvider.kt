@@ -16,22 +16,34 @@ sealed interface IconStyle {
     val id: String
 
     /** The app's own icon, framed in a bubble. */
-    data object Original : IconStyle { override val id = "original" }
+    data object Original : IconStyle {
+        override val id = "original"
+    }
 
     /** Like [Original], but desaturated. */
-    data object Grayscale : IconStyle { override val id = "grayscale" }
+    data object Grayscale : IconStyle {
+        override val id = "grayscale"
+    }
 
     /** The app's own simple (monochrome) icon. */
-    data object Mono : IconStyle { override val id = "mono" }
+    data object Mono : IconStyle {
+        override val id = "mono"
+    }
 
     /** A picture the user uploaded (per app only). */
-    data object Custom : IconStyle { override val id = "custom" }
+    data object Custom : IconStyle {
+        override val id = "custom"
+    }
 
     /** Whatever the pack maps to the app. */
-    data class Pack(val pkg: String) : IconStyle { override val id = "pack:$pkg" }
+    data class Pack(val pkg: String) : IconStyle {
+        override val id = "pack:$pkg"
+    }
 
     /** One specific icon from a pack, picked by hand (per app only). */
-    data class PackIcon(val pkg: String, val name: String) : IconStyle { override val id = "packicon:$pkg/$name" }
+    data class PackIcon(val pkg: String, val name: String) : IconStyle {
+        override val id = "packicon:$pkg/$name"
+    }
 
     companion object {
         fun parse(id: String?): IconStyle? = when {
@@ -122,8 +134,7 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
         return File(diskDir, sha1(key) + ".png")
     }
 
-    private fun installedAt(pkg: String): Long =
-        runCatching { context.packageManager.getPackageInfo(pkg, 0).lastUpdateTime }.getOrDefault(0L)
+    private fun installedAt(pkg: String): Long = runCatching { context.packageManager.getPackageInfo(pkg, 0).lastUpdateTime }.getOrDefault(0L)
 
     fun render(app: AppEntry, original: Drawable?, size: Int, style: IconStyle): Bitmap {
         val cacheKey = memoryKey(app, size, style)
@@ -177,8 +188,7 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
 
     private fun customFile(app: AppEntry): File = File(dir, sha1(app.key) + ".png")
 
-    private fun sha1(text: String): String =
-        MessageDigest.getInstance("SHA-1").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
+    private fun sha1(text: String): String = MessageDigest.getInstance("SHA-1").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
     /** Same light/dark bubble the Nothing pack uses, so styles mix well. */
     private fun bubble(): Int {

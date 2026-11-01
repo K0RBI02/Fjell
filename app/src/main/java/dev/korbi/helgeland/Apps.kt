@@ -22,8 +22,7 @@ data class AppEntry(
 
     companion object {
         /** Whether [key] belongs to an app of [packageName] for the user with [userHash] (see [key]). */
-        fun isOf(key: String, packageName: String, userHash: Int): Boolean =
-            key.startsWith("$packageName/") && key.endsWith("#$userHash")
+        fun isOf(key: String, packageName: String, userHash: Int): Boolean = key.startsWith("$packageName/") && key.endsWith("#$userHash")
     }
 }
 
@@ -45,9 +44,8 @@ class AppRepository(private val context: Context) {
             .sortedWith { a, b -> collator.compare(a.label, b.label) }
     }
 
-    fun activityInfo(app: AppEntry): LauncherActivityInfo? =
-        launcherApps.getActivityList(app.component.packageName, app.user)
-            .firstOrNull { it.componentName == app.component }
+    fun activityInfo(app: AppEntry): LauncherActivityInfo? = launcherApps.getActivityList(app.component.packageName, app.user)
+        .firstOrNull { it.componentName == app.component }
 
     fun launch(app: AppEntry) {
         launcherApps.startMainActivity(app.component, app.user, null, null)
@@ -73,8 +71,7 @@ class AppRepository(private val context: Context) {
             .take(limit)
     }
 
-    fun shortcutIcon(shortcut: ShortcutInfo, density: Int): Drawable? =
-        runCatching { launcherApps.getShortcutIconDrawable(shortcut, density) }.getOrNull()
+    fun shortcutIcon(shortcut: ShortcutInfo, density: Int): Drawable? = runCatching { launcherApps.getShortcutIconDrawable(shortcut, density) }.getOrNull()
 
     fun startShortcut(shortcut: ShortcutInfo) {
         launcherApps.startShortcut(shortcut, null, null)

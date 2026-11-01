@@ -144,7 +144,10 @@ fun AppMenuPopup(
     onDismiss: () -> Unit,
 ) {
     MenuCard(onDismiss) { dismiss ->
-        val dismissThen = { action: () -> Unit -> dismiss(); action() }
+        val dismissThen = { action: () -> Unit ->
+            dismiss()
+            action()
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             AppIcon(app, 36.dp, actions)
             Spacer(Modifier.width(12.dp))
@@ -189,7 +192,10 @@ fun StapelMenuPopup(
     onDismiss: () -> Unit,
 ) {
     MenuCard(onDismiss) { dismiss ->
-        val dismissThen = { action: () -> Unit -> dismiss(); action() }
+        val dismissThen = { action: () -> Unit ->
+            dismiss()
+            action()
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             StapelIcon(minOf(iconSize, 36.dp))
             Spacer(Modifier.width(12.dp))
@@ -208,7 +214,10 @@ fun StapelMenuPopup(
 @Composable
 fun SearchMenuPopup(span: Int, mic: Boolean, actions: LauncherActions, onDismiss: () -> Unit) {
     MenuCard(onDismiss) { dismiss ->
-        val dismissThen = { action: () -> Unit -> dismiss(); action() }
+        val dismissThen = { action: () -> Unit ->
+            dismiss()
+            action()
+        }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Box(Modifier.size(36.dp).background(Color(0xFFF3EFF4), RoundedCornerShape(36)), contentAlignment = Alignment.Center) {
                 SearchGlyph(Ink)
