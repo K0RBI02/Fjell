@@ -84,6 +84,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -322,12 +323,14 @@ internal fun BubbleChoice(
                 .size(64.dp)
                 .border(2.dp, if (selected) PopupText else Color.Transparent, RoundedCornerShape(36)),
         ) { preview() }
+        // Long names (icon packs) wrap onto a second line instead of being cut off.
         Text(
             label,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            style = TextStyle(fontFamily = IndieFlower, fontSize = 15.sp, color = if (selected) PopupText else Muted),
-            modifier = Modifier.padding(top = 4.dp),
+            textAlign = TextAlign.Center,
+            style = TextStyle(fontFamily = IndieFlower, fontSize = 15.sp, lineHeight = 17.sp, color = if (selected) PopupText else Muted),
+            modifier = Modifier.padding(top = 4.dp, start = 2.dp, end = 2.dp),
         )
     }
 }

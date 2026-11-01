@@ -38,18 +38,29 @@ enum class Scene(
     }
 }
 
-/** From [minute] of the day (0 until 1440) on, [scene] shows, until the next slot takes over. */
-data class SceneSlot(val minute: Int, val scene: Scene)
+enum class SunEvent { Sunrise, Sunset }
+
+/**
+ * From [minute] of the day (0 until 1440) on, [scene] shows, until the next slot takes over.
+ * A [sun] slot follows sunrise or sunset instead; [minute] is its stand-in while those are unknown.
+ */
+data class SceneSlot(val minute: Int, val scene: Scene, val sun: SunEvent? = null) {
+    fun minuteWith(times: SunTimes?): Int = when (sun) {
+        null -> minute
+        SunEvent.Sunrise -> times?.sunrise ?: minute
+        SunEvent.Sunset -> times?.sunset ?: minute
+    }
+}
 
 /** The user's wallpaper timetable; each slot runs until the next one, the last one past midnight. */
 object SceneSchedule {
     const val MAX_SLOTS = 6
     val DEFAULT = listOf(SceneSlot(7 * 60, Scene.Mountain), SceneSlot(18 * 60, Scene.Pole))
 
-    /** The slot in charge at [minute], or null for an empty schedule. */
-    fun slotAt(slots: List<SceneSlot>, minute: Int): SceneSlot? {
-        val sorted = slots.sortedBy { it.minute }
-        return sorted.lastOrNull { it.minute <= minute } ?: sorted.lastOrNull()
+    /** The slot in charge at [minute] given today's [sun] times, or null for an empty schedule. */
+    fun slotAt(slots: List<SceneSlot>, minute: Int, sun: SunTimes? = null): SceneSlot? {
+        val sorted = slots.sortedBy { it.minuteWith(sun) }
+        return sorted.lastOrNull { it.minuteWith(sun) <= minute } ?: sorted.lastOrNull()
     }
 
     /** A free time for a new slot: an hour after the last one, stepping on until nothing is there yet. */
@@ -60,13 +71,14 @@ object SceneSchedule {
         return minute
     }
 
-    /** "420:Mountain,1080:Pole"; unknown scenes and broken entries are skipped. */
-    fun encode(slots: List<SceneSlot>) = slots.joinToString(",") { "${it.minute}:${it.scene.name}" }
+    /** "420:Mountain,1080:Pole:Sunset"; unknown scenes and broken entries are skipped. */
+    fun encode(slots: List<SceneSlot>) = slots.joinToString(",") { listOfNotNull(it.minute, it.scene.name, it.sun?.name).joinToString(":") }
 
     fun decode(text: String?): List<SceneSlot>? = text?.split(',')?.mapNotNull { part ->
-        val (minute, name) = part.split(':').takeIf { it.size == 2 } ?: return@mapNotNull null
-        val scene = Scene.entries.firstOrNull { it.name == name } ?: return@mapNotNull null
-        minute.toIntOrNull()?.takeIf { it in 0 until MINUTES_PER_DAY }?.let { SceneSlot(it, scene) }
+        val fields = part.split(':').takeIf { it.size in 2..3 } ?: return@mapNotNull null
+        val scene = Scene.entries.firstOrNull { it.name == fields[1] } ?: return@mapNotNull null
+        val sun = fields.getOrNull(2)?.let { name -> SunEvent.entries.firstOrNull { it.name == name } ?: return@mapNotNull null }
+        fields[0].toIntOrNull()?.takeIf { it in 0 until MINUTES_PER_DAY }?.let { SceneSlot(it, scene, sun) }
     }
 
     private const val MINUTES_PER_DAY = 24 * 60
@@ -118,10 +130,10 @@ data class LauncherSettings(
     val snowInWinter: Boolean = true,
 ) {
     /** The scene to draw at [time]: the scheduled one if switched on, else the chosen one. */
-    fun sceneAt(time: LocalDateTime): Scene = when {
+    fun sceneAt(time: LocalDateTime, sun: SunTimes? = null): Scene = when {
         !autoScene -> scene
         snowInWinter && Scene.isWinter(time) -> Scene.Snow
-        else -> SceneSchedule.slotAt(schedule, time.hour * 60 + time.minute)?.scene ?: scene
+        else -> SceneSchedule.slotAt(schedule, time.hour * 60 + time.minute, sun)?.scene ?: scene
     }
 
     fun save(sp: SharedPreferences) {

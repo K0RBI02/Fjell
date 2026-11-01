@@ -1,11 +1,15 @@
 package dev.korbi.fjell
 
 /**
- * Picks the stack's "relevant" row: apps installed recently and never opened come
- * first (newest first), then the most used ones (ties go to the most recently used).
+ * Picks the stack's "relevant" row, in four tiers:
+ * 1. just installed (under half a day) and not opened yet, newest first
+ * 2. the most used apps (ties go to the most recently used)
+ * 3. installed half a day to two days ago and still not opened, newest first
+ * 4. everything else, newest install first
  */
 object Relevance {
-    const val NEW_FOR_MS = 3 * 24 * 60 * 60 * 1000L
+    const val JUST_INSTALLED_MS = 12 * 60 * 60 * 1000L
+    const val NEW_FOR_MS = 2 * 24 * 60 * 60 * 1000L
 
     /**
      * [installedAt] and [launches] are looked up by key; [recent] lists keys, most
@@ -19,14 +23,21 @@ object Relevance {
         now: Long,
         limit: Int,
     ): List<String> {
-        val fresh = candidates
-            .filter { launches(it) == 0 && now - installedAt(it) in 0 until NEW_FOR_MS }
-            .sortedByDescending(installedAt)
+        val (used, unopened) = candidates.partition { launches(it) > 0 }
         val recency = recent.withIndex().associate { (i, key) -> key to i }
-        val used = candidates
-            .filter { launches(it) > 0 }
-            .sortedWith(compareByDescending<String>(launches).thenBy { recency[it] ?: Int.MAX_VALUE })
-        return (fresh + used).take(limit)
+        val mostUsed = used.sortedWith(compareByDescending<String>(launches).thenBy { recency[it] ?: Int.MAX_VALUE })
+        val byAge = unopened.sortedByDescending(installedAt).groupBy { key ->
+            val age = now - installedAt(key)
+            when {
+                age in 0 until JUST_INSTALLED_MS -> 0
+                age in 0 until NEW_FOR_MS -> 1
+                else -> 2
+            }
+        }
+        val justInstalled = byAge[0].orEmpty()
+        val recentlyInstalled = byAge[1].orEmpty()
+        val rest = byAge[2].orEmpty()
+        return (justInstalled + mostUsed + recentlyInstalled + rest).take(limit)
     }
 }
 

@@ -77,6 +77,7 @@ fun SettingsPopup(
     hiddenApps: List<AppEntry>,
     actions: LauncherActions,
     onDismiss: () -> Unit,
+    sun: SunTimes? = null,
 ) {
     var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
     BackHandler { if (page != null) page = null else onDismiss() }
@@ -92,7 +93,7 @@ fun SettingsPopup(
             ) {
                 when (current) {
                     null -> overview(onOpen = { page = it })
-                    SettingsPage.Home -> homePage(settings, stapelShown, searchShown, actions, update)
+                    SettingsPage.Home -> homePage(settings, stapelShown, searchShown, sun, actions, update)
                     SettingsPage.Clock -> clockPage(settings, update)
                     SettingsPage.Stapel -> stapelPage(settings, hiddenApps, actions, update)
                     SettingsPage.Icons -> iconsPage(sampleApp, globalStyle, iconPacks, actions)
@@ -128,7 +129,7 @@ private fun LazyListScope.overview(onOpen: (SettingsPage) -> Unit) {
     }
 }
 
-private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Boolean, searchShown: Boolean, actions: LauncherActions, update: Update) {
+private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Boolean, searchShown: Boolean, sun: SunTimes?, actions: LauncherActions, update: Update) {
     item { HandTitle(stringResource(R.string.wallpaper), Modifier.padding(horizontal = 22.dp)) }
     item {
         Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
@@ -159,7 +160,7 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
         ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.PartlyCloudy, Ink) } } }
     }
     if (settings.autoScene) {
-        item { ScheduleEditor(settings.schedule, update) }
+        item { ScheduleEditor(settings.schedule, update, sun = sun) }
         item {
             ToggleRow(
                 label = stringResource(R.string.snow_in_winter),
@@ -412,9 +413,14 @@ private fun DrawScope.drawWaveGlyph(color: Color) {
  * cycles the scene, tapping the time opens a dial, × removes the slot.
  */
 @Composable
-internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSettings) -> LauncherSettings) -> Unit, initiallyEditing: SceneSlot? = null) {
+internal fun ScheduleEditor(
+    schedule: List<SceneSlot>,
+    update: ((LauncherSettings) -> LauncherSettings) -> Unit,
+    initiallyEditing: SceneSlot? = null,
+    sun: SunTimes? = null,
+) {
     val is24 = DateFormat.is24HourFormat(LocalContext.current)
-    val slots = schedule.sortedBy { it.minute }
+    val slots = schedule.sortedBy { it.minuteWith(sun) }
     var editing by remember { mutableStateOf(initiallyEditing) }
     fun replace(old: SceneSlot, new: SceneSlot?) = update { s -> s.copy(schedule = s.schedule.mapNotNull { if (it == old) new else it }) }
 
@@ -443,7 +449,20 @@ internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSetting
                         .clip(RoundedCornerShape(12.dp))
                         .clickable { editing = if (editing == slot) null else slot },
                 ) {
-                    Text(stringResource(R.string.from_time, formatMinute(slot.minute, is24)), style = rowStyle)
+                    // Sun slots show today's time once the location is known.
+                    val today = when (slot.sun) {
+                        null -> slot.minute
+                        SunEvent.Sunrise -> sun?.sunrise
+                        SunEvent.Sunset -> sun?.sunset
+                    }?.let { formatMinute(it, is24) }
+                    Text(
+                        when (slot.sun) {
+                            null -> stringResource(R.string.from_time, today.orEmpty())
+                            SunEvent.Sunrise -> today?.let { stringResource(R.string.at_sunrise_time, it) } ?: stringResource(R.string.at_sunrise)
+                            SunEvent.Sunset -> today?.let { stringResource(R.string.at_sunset_time, it) } ?: stringResource(R.string.at_sunset)
+                        },
+                        style = rowStyle,
+                    )
                     Text(sceneName, style = hintStyle)
                 }
                 if (slots.size > 1) {
@@ -463,13 +482,15 @@ internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSetting
             if (editing == slot) {
                 TimeEditor(
                     minute = slot.minute,
+                    sun = slot.sun,
                     is24 = is24,
-                    onDone = { minute ->
-                        // Two slots at the same time would fight; the dial just stays open on a clash.
-                        if (minute == slot.minute) {
-                            editing = null
-                        } else if (slots.none { it.minute == minute }) {
-                            replace(slot, slot.copy(minute = minute))
+                    onDone = { minute, event ->
+                        // Two slots at the same time would fight; the editor just stays open on a clash.
+                        val others = slots - slot
+                        val clash = if (event == null) others.any { it.sun == null && it.minute == minute } else others.any { it.sun == event }
+                        if (!clash) {
+                            val changed = slot.copy(minute = if (event == null) minute else slot.minute, sun = event)
+                            if (changed != slot) replace(slot, changed)
                             editing = null
                         }
                     },
@@ -496,8 +517,9 @@ internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSetting
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TimeEditor(minute: Int, is24: Boolean, onDone: (Int) -> Unit, onCancel: () -> Unit) {
+private fun TimeEditor(minute: Int, sun: SunEvent?, is24: Boolean, onDone: (Int, SunEvent?) -> Unit, onCancel: () -> Unit) {
     val state = rememberTimePickerState(initialHour = minute / 60, initialMinute = minute % 60, is24Hour = is24)
+    var event by remember { mutableStateOf(sun) }
     // The dial is tall; scroll the sheet so it and its buttons are fully in view when it opens.
     val bringIntoView = remember { BringIntoViewRequester() }
     LaunchedEffect(Unit) {
@@ -508,30 +530,47 @@ private fun TimeEditor(minute: Int, is24: Boolean, onDone: (Int) -> Unit, onCanc
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoView).padding(vertical = 8.dp),
     ) {
-        // The dial draws its colon in onSurface, which is dark ink in our light menu scheme.
-        MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(onSurface = PopupText)) {
-            TimePicker(
-                state = state,
-                colors = TimePickerDefaults.colors(
-                    clockDialColor = Card,
-                    clockDialSelectedContentColor = Color.White,
-                    clockDialUnselectedContentColor = PopupText,
-                    selectorColor = Mountain,
-                    periodSelectorBorderColor = Muted,
-                    periodSelectorSelectedContainerColor = Mountain,
-                    periodSelectorUnselectedContainerColor = Color.Transparent,
-                    periodSelectorSelectedContentColor = Color.White,
-                    periodSelectorUnselectedContentColor = Muted,
-                    timeSelectorSelectedContainerColor = Mountain,
-                    timeSelectorUnselectedContainerColor = Card,
-                    timeSelectorSelectedContentColor = Color.White,
-                    timeSelectorUnselectedContentColor = PopupText,
-                ),
-            )
+        // A fixed time on the dial, or whenever the sun rises or sets that day.
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+            listOf(null to R.string.time_fixed, SunEvent.Sunrise to R.string.sunrise, SunEvent.Sunset to R.string.sunset).forEach { (choice, label) ->
+                val selected = event == choice
+                Text(
+                    stringResource(label),
+                    style = rowStyle.copy(fontSize = 15.sp, color = if (selected) Color.White else PopupText),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (selected) Mountain else Card)
+                        .selectable(selected = selected, role = Role.RadioButton) { event = choice }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+        if (event == null) {
+            // The dial draws its colon in onSurface, which is dark ink in our light menu scheme.
+            MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(onSurface = PopupText)) {
+                TimePicker(
+                    state = state,
+                    colors = TimePickerDefaults.colors(
+                        clockDialColor = Card,
+                        clockDialSelectedContentColor = Color.White,
+                        clockDialUnselectedContentColor = PopupText,
+                        selectorColor = Mountain,
+                        periodSelectorBorderColor = Muted,
+                        periodSelectorSelectedContainerColor = Mountain,
+                        periodSelectorUnselectedContainerColor = Color.Transparent,
+                        periodSelectorSelectedContentColor = Color.White,
+                        periodSelectorUnselectedContentColor = Muted,
+                        timeSelectorSelectedContainerColor = Mountain,
+                        timeSelectorUnselectedContainerColor = Card,
+                        timeSelectorSelectedContentColor = Color.White,
+                        timeSelectorUnselectedContentColor = PopupText,
+                    ),
+                )
+            }
         }
         Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.cancel), style = rowStyle.copy(color = Muted), modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onCancel).padding(12.dp))
-            Text(stringResource(R.string.set_time), style = rowStyle, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onDone(state.hour * 60 + state.minute) }.padding(12.dp))
+            Text(stringResource(R.string.set_time), style = rowStyle, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onDone(state.hour * 60 + state.minute, event) }.padding(12.dp))
         }
     }
 }

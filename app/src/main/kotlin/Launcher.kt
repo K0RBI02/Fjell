@@ -33,10 +33,16 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -90,6 +96,7 @@ fun Launcher(
     homePresses: Int,
     actions: LauncherActions,
     events: List<CalendarEvent> = emptyList(),
+    place: Place? = null,
 ) {
     // With the automatic scene on, the wallpaper follows the clock; checked once a minute.
     val clock = LocalClock.current
@@ -102,7 +109,8 @@ fun Launcher(
     val chosenSettings = settings
 
     @Suppress("NAME_SHADOWING")
-    val settings = settings.copy(scene = settings.sceneAt(now))
+    val sun = remember(now.toLocalDate(), place) { place?.let { Sun.times(now.toLocalDate(), it, clock.zone) } }
+    val settings = settings.copy(scene = settings.sceneAt(now, sun))
     var drawerOpen by rememberSaveable { mutableStateOf(false) }
     var drawerSearch by remember { mutableStateOf(false) }
     var settingsOpen by rememberSaveable { mutableStateOf(false) }
@@ -192,6 +200,7 @@ fun Launcher(
                     hiddenApps = apps.filter { it.key in hiddenKeys },
                     actions = actions,
                     onDismiss = { settingsOpen = false },
+                    sun = sun,
                 )
             }
             // Keep the last app around so the picker can still render while it animates out.
@@ -263,11 +272,35 @@ internal fun AppMenu(expanded: Boolean, onDismiss: () -> Unit, app: AppEntry, in
 
 /** [renderSize] is the resolution the bitmap is drawn at; pass a fixed one when [size] animates. */
 @Composable
-fun AppIcon(app: AppEntry, size: Dp, actions: LauncherActions, renderSize: Dp = size) {
+fun AppIcon(app: AppEntry, size: Dp, actions: LauncherActions, renderSize: Dp = size, ring: Boolean = false) {
     val px = with(LocalDensity.current) { renderSize.roundToPx() }
     val version = LocalIconVersion.current
     val bitmap by produceState<ImageBitmap?>(null, app.key, px, version) { value = actions.icon(app, px) }
-    Box(Modifier.size(size)) {
+    // New notifications: a hairline arc in the icon's own ink, hugging the top-right corner
+    // just outside the bubble, from about the middle of the top edge to the middle of the right one.
+    val ink = remember(bitmap) { bitmap?.let { Color(IconRender.inkOf(it.asAndroidBitmap())) } }
+    val ringAlpha by animateFloatAsState(if (ring && ink != null) 0.6f else 0f, tween(300), label = "ring")
+    Box(
+        Modifier.size(size).drawWithContent {
+            drawContent()
+            if (ringAlpha > 0f && ink != null) {
+                val width = 1.5.dp.toPx()
+                val gap = 2.5.dp.toPx() + width / 2
+                val side = this.size.width + 2 * gap
+                val left = -gap
+                val top = -gap
+                val right = left + side
+                val radius = side * 0.36f
+                val arc = Path().apply {
+                    moveTo(left + side * 0.56f, top)
+                    lineTo(right - radius, top)
+                    arcTo(Rect(right - 2 * radius, top, right, top + 2 * radius), -90f, 90f, forceMoveTo = false)
+                    lineTo(right, top + side * 0.44f)
+                }
+                drawPath(arc, ink.copy(alpha = ringAlpha), style = Stroke(width, cap = StrokeCap.Round))
+            }
+        },
+    ) {
         bitmap?.let { Image(it, contentDescription = app.label, modifier = Modifier.fillMaxSize()) }
     }
 }

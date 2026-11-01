@@ -145,10 +145,8 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
             IconStyle.Grayscale -> IconRender.framed(original, size, bubble, grayscale = true)
             IconStyle.Mono -> IconRender.monochrome(original, size, bubble)
             IconStyle.Custom -> customPicture(app)?.let { IconRender.custom(it, size) }
-            is IconStyle.Pack -> pack(style.pkg)?.let { pack ->
-                // Apps the pack doesn't cover get their simple icon in the pack's colors.
-                pack.matched(app)?.let { pack.icon(it, size) } ?: IconRender.monochrome(original, size, pack.backColor)
-            }
+            // Apps the pack doesn't cover keep their original icon (the fallback below).
+            is IconStyle.Pack -> pack(style.pkg)?.let { pack -> pack.matched(app)?.let { pack.icon(it, size) } }
             is IconStyle.PackIcon -> pack(style.pkg)?.icon(style.name, size)
         } ?: IconRender.framed(original, size, bubble)
         return bitmap.also { cache.put(cacheKey, it) }
@@ -200,7 +198,7 @@ class IconProvider(private val context: Context, private val prefs: Prefs) {
         private const val CUSTOM_MAX_PX = 512
 
         /** Bump when rendering changes, so icons drawn by older code are ignored. */
-        private const val DISK_FORMAT = 1
+        private const val DISK_FORMAT = 2
         private const val DISK_CACHE_MAX_FILES = 3000
     }
 }

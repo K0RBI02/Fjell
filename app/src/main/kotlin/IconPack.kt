@@ -6,9 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Resources
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.AdaptiveIconDrawable
-import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
@@ -20,7 +17,6 @@ class IconPack(context: Context, val packageName: String) {
     private val byComponent = HashMap<String, String>()
     private val byPackage = HashMap<String, String>()
     private val mappedNames = LinkedHashSet<String>()
-    private var iconBack: String? = null
 
     init {
         val parsed = withXml("appfilter") { parser ->
@@ -35,7 +31,6 @@ class IconPack(context: Context, val packageName: String) {
                         byComponent.putIfAbsent(cn.flattenToString(), drawable)
                         byPackage.putIfAbsent(cn.packageName, drawable)
                     }
-                    "iconback" -> iconBack = parser.getAttributeValue(null, "img1")
                 }
             }
         }
@@ -53,12 +48,6 @@ class IconPack(context: Context, val packageName: String) {
             }
         }
         (catalogue.ifEmpty { mappedNames }).toList()
-    }
-
-    /** The pack's bubble color, read from its iconback. */
-    val backColor: Int by lazy {
-        val back = iconBack?.let(::drawable) as? AdaptiveIconDrawable
-        (back?.background as? ColorDrawable)?.color ?: Color.WHITE
     }
 
     /** The pack's icon for [app], if it has one. */

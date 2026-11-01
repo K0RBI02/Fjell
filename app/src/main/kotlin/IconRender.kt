@@ -122,5 +122,34 @@ object IconRender {
         return bitmap
     }
 
+    /**
+     * The icon's own ink: the most common color that clearly stands out from its bubble
+     * (the black glyph on a white pack icon, the green of a colorful one).
+     */
+    fun inkOf(icon: Bitmap): Int {
+        val w = icon.width
+        val h = icon.height
+        if (w == 0 || h == 0) return Color.WHITE
+        val bubble = icon.getPixel(w / 2, (h * 0.08f).toInt())
+        val buckets = HashMap<Int, IntArray>() // 4-bit color → count, r, g, b sums
+        val step = maxOf(1, minOf(w, h) / 32)
+        for (y in 0 until h step step) {
+            for (x in 0 until w step step) {
+                val p = icon.getPixel(x, y)
+                if (Color.alpha(p) < 200) continue
+                val diff = abs(Color.red(p) - Color.red(bubble)) + abs(Color.green(p) - Color.green(bubble)) + abs(Color.blue(p) - Color.blue(bubble))
+                if (diff < 120) continue
+                val key = (Color.red(p) shr 4 shl 8) or (Color.green(p) shr 4 shl 4) or (Color.blue(p) shr 4)
+                val bucket = buckets.getOrPut(key) { IntArray(4) }
+                bucket[0]++
+                bucket[1] += Color.red(p)
+                bucket[2] += Color.green(p)
+                bucket[3] += Color.blue(p)
+            }
+        }
+        val top = buckets.values.maxByOrNull { it[0] } ?: return glyphFor(bubble)
+        return Color.rgb(top[1] / top[0], top[2] / top[0], top[3] / top[0])
+    }
+
     private fun lerp(a: Int, b: Int, t: Float) = (a + (b - a) * t).toInt()
 }

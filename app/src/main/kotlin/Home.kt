@@ -238,7 +238,7 @@ private fun Clock(
     val alarm = nextAlarm?.takeIf { it - clock.millis() in 0..ALARM_HORIZON_MS }?.let(::clockTime)
     // A meeting in the next few hours matters more than tomorrow's alarm, so it takes the spot.
     // Re-evaluated with every minute tick, so a started event drops off on its own.
-    val event = Calendar.next(events, clock.millis())
+    val event = Calendar.next(events, clock.millis()) ?: Calendar.allDayNow(events, now)
     val noRipple = remember { MutableInteractionSource() }
     val sublineStyle = TextStyle(fontFamily = IndieFlower, fontSize = 21.sp, color = color, shadow = softShadow)
 
@@ -267,7 +267,7 @@ private fun Clock(
                     val eventLabel = stringResource(R.string.cd_event)
                     Canvas(Modifier.size(15.dp).semantics { contentDescription = eventLabel }) { drawCalendarGlyph(color) }
                     Text(
-                        " ${clockTime(event.begin)} ${event.title}",
+                        if (event.day != null) " ${event.title}" else " ${clockTime(event.begin)} ${event.title}",
                         style = sublineStyle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,

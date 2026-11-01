@@ -4,32 +4,41 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class RelevanceTest {
-    private val now = 10 * Relevance.NEW_FOR_MS
-    private val day = Relevance.NEW_FOR_MS / 3
+    private val hour = 60 * 60 * 1000L
+    private val now = 1000 * hour
 
     private fun pick(
         installed: Map<String, Long>,
         launches: Map<String, Int> = emptyMap(),
         recent: List<String> = emptyList(),
-        limit: Int = 4,
+        limit: Int = 8,
     ) = Relevance.pick(installed.keys.toList(), { installed.getValue(it) }, { launches[it] ?: 0 }, recent, now, limit)
 
     @Test
-    fun `new unopened apps come first, newest first`() {
-        val installed = mapOf("old" to 0L, "yesterday" to now - day, "today" to now - 1000)
-        assertEquals(listOf("today", "yesterday", "old"), pick(installed, launches = mapOf("old" to 5)))
+    fun `just installed, then most used, then recently installed, then the rest`() {
+        val installed = mapOf(
+            "old" to 0L,
+            "used" to 0L,
+            "yesterday" to now - 30 * hour,
+            "anHourAgo" to now - hour,
+            "lastWeek" to now - 7 * 24 * hour,
+        )
+        assertEquals(
+            listOf("anHourAgo", "used", "yesterday", "lastWeek", "old"),
+            pick(installed, launches = mapOf("used" to 5)),
+        )
     }
 
     @Test
-    fun `an opened app is no longer new`() {
-        val installed = mapOf("fresh" to now - 1000, "used" to 0L)
+    fun `half a day old is no longer just installed`() {
+        val installed = mapOf("thisMorning" to now - 13 * hour, "used" to 0L)
+        assertEquals(listOf("used", "thisMorning"), pick(installed, launches = mapOf("used" to 1)))
+    }
+
+    @Test
+    fun `an opened app ranks by use, not by age`() {
+        val installed = mapOf("fresh" to now - hour, "used" to 0L)
         assertEquals(listOf("used", "fresh"), pick(installed, launches = mapOf("fresh" to 1, "used" to 9)))
-    }
-
-    @Test
-    fun `apps older than three days are not new`() {
-        val installed = mapOf("week" to now - 7 * day)
-        assertEquals(emptyList<String>(), pick(installed))
     }
 
     @Test

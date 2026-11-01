@@ -17,10 +17,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +46,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
@@ -255,11 +254,10 @@ internal fun AppGrid(
                 ) {
                     when (item) {
                         is GridItem.App -> {
-                            Box {
-                                AppIcon(item.entry, iconSize, actions, renderSize = maxIconSize)
-                                if (item.entry.component.packageName in dotPackages && item.entry.key !in noDots) {
-                                    NotificationDot(Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp))
-                                }
+                            val hasNews = item.entry.component.packageName in dotPackages && item.entry.key !in noDots
+                            val newsLabel = stringResource(R.string.cd_new_notifications)
+                            Box(if (hasNews) Modifier.semantics { stateDescription = newsLabel } else Modifier) {
+                                AppIcon(item.entry, iconSize, actions, renderSize = maxIconSize, ring = hasNews)
                             }
                             AppMenu(menuSlot == i, onDismiss = { menuSlot = null }, app = item.entry, inGrid = true, actions = actions)
                         }
@@ -285,20 +283,6 @@ internal fun AppGrid(
             }
         }
     }
-}
-
-/** A small dot in the wallpaper's barn red, ringed in white so it reads on any bubble. */
-@Composable
-private fun NotificationDot(modifier: Modifier = Modifier) {
-    val description = stringResource(R.string.cd_new_notifications)
-    Box(
-        modifier
-            .semantics { contentDescription = description }
-            .size(12.dp)
-            .background(Color.White, CircleShape)
-            .padding(2.dp)
-            .background(Color(0xFFC14A42), CircleShape),
-    )
 }
 
 /** The home search bar: a long bubble with a magnifier, a hand-written hint and an optional mic. */

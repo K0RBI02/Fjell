@@ -67,6 +67,19 @@ class Prefs(context: Context) {
     }
 
     /** The last weather fetched, shown right away on the next start. */
+    /** Where the phone was last seen, for sun times; coarse location only. */
+    var lastPlace: Place?
+        get() = if (sp.contains("placeLat")) Place(sp.getFloat("placeLat", 0f).toDouble(), sp.getFloat("placeLon", 0f).toDouble()) else null
+        set(value) = sp.edit().apply {
+            if (value == null) {
+                remove("placeLat")
+                remove("placeLon")
+            } else {
+                putFloat("placeLat", value.latitude.toFloat())
+                putFloat("placeLon", value.longitude.toFloat())
+            }
+        }.apply()
+
     var lastWeather: WeatherNow?
         get() {
             if (!sp.contains("temperature")) return null

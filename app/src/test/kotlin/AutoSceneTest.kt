@@ -57,4 +57,23 @@ class AutoSceneTest {
         assertEquals(12 * 60, SceneSchedule.nextFreeMinute(emptyList()))
         assertEquals(60, SceneSchedule.nextFreeMinute(listOf(SceneSlot(23 * 60, Scene.Pole), SceneSlot(0, Scene.Snow))))
     }
+
+    @Test
+    fun `sun slots follow the day's sunrise and sunset`() {
+        val schedule = listOf(SceneSlot(7 * 60, Scene.Mountain, SunEvent.Sunrise), SceneSlot(18 * 60, Scene.Pole, SunEvent.Sunset))
+        val settings = auto.copy(schedule = schedule, snowInWinter = false)
+        val winterSun = SunTimes(sunrise = 8 * 60, sunset = 16 * 60 + 30)
+        assertEquals(Scene.Pole, settings.sceneAt(at(11, 7, 30), winterSun))
+        assertEquals(Scene.Mountain, settings.sceneAt(at(11, 12), winterSun))
+        assertEquals(Scene.Pole, settings.sceneAt(at(11, 17), winterSun))
+        // Unknown sun (no location yet): the stand-in times apply.
+        assertEquals(Scene.Mountain, settings.sceneAt(at(11, 17)))
+    }
+
+    @Test
+    fun `sun slots survive a save round trip`() {
+        val slots = listOf(SceneSlot(420, Scene.Mountain, SunEvent.Sunrise), SceneSlot(1200, Scene.Pole))
+        assertEquals(slots, SceneSchedule.decode(SceneSchedule.encode(slots)))
+        assertEquals(emptyList<SceneSlot>(), SceneSchedule.decode("420:Pole:Noon"))
+    }
 }

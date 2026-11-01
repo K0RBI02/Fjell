@@ -2,6 +2,18 @@
 
 Each version's section becomes the notes of its GitHub release.
 
+## Unreleased
+
+### New
+- Timetable slots can follow sunrise and sunset (computed on the phone from the coarse location)
+- All-day events (birthdays, holidays) show on the clock line until 6 pm
+
+### Improved
+- Relevant row: just installed apps, then the most used, then apps from the last two days, then the rest
+- Apps an icon pack doesn't cover keep their original icon
+- New notifications show as a hairline arc around the icon's top-right corner, in the icon's own color
+- Long icon pack names wrap instead of being cut off
+
 ## 1.1
 
 ### New

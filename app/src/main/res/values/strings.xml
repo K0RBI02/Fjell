@@ -120,7 +120,7 @@
     <string name="cd_alarm">Next alarm</string>
     <string name="cd_event">Next event</string>
     <string name="next_event">Next event</string>
-    <string name="next_event_hint">replaces the alarm when it starts within 4 hours</string>
+    <string name="next_event_hint">replaces the alarm when it starts within 4 hours · all-day ones until 6 pm</string>
     <string name="cd_new_notifications">new notifications</string>
     <string name="cd_voice_search">Voice search</string>
     <string name="cd_app_menu">Options</string>
@@ -139,6 +139,13 @@
     <string name="auto_scene_hint">follow your own timetable</string>
     <string name="from_time">from %1$s</string>
     <string name="add_time">+ Add a time</string>
+    <string name="at_sunrise">at sunrise</string>
+    <string name="at_sunset">at sunset</string>
+    <string name="at_sunrise_time">at sunrise · %1$s</string>
+    <string name="at_sunset_time">at sunset · %1$s</string>
+    <string name="time_fixed">Time</string>
+    <string name="sunrise">Sunrise</string>
+    <string name="sunset">Sunset</string>
     <string name="set_time">Set</string>
     <string name="cancel">Cancel</string>
     <string name="remove">Remove</string>

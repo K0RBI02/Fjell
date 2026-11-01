@@ -65,7 +65,7 @@ object Weather {
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun lastLocation(context: Context): Location? {
+    internal suspend fun lastLocation(context: Context): Location? {
         val lm = context.getSystemService(LocationManager::class.java)
         val known = lm.getProviders(true)
             .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }

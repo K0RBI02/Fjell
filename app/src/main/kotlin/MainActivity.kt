@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -61,6 +62,9 @@ class MainActivity : ComponentActivity() {
         override fun onReceive(context: Context, intent: Intent) = refreshNextAlarm()
     }
     private var weatherFetchedAt = 0L
+
+    /** Last known coarse position, for sunrise and sunset in the wallpaper timetable. */
+    private val place = mutableStateOf<Place?>(null)
 
     /** Timed calendar events coming up soon; the UI picks the one to show. */
     private val events = mutableStateOf<List<CalendarEvent>>(emptyList())
@@ -144,6 +148,7 @@ class MainActivity : ComponentActivity() {
         // Grids from before the stack button existed get it once; fresh installs get it from seedGrid.
         if (prefs.hasChosenGrid && !prefs.stapelButtonPlaced) addStapelButton()
         weather.value = prefs.lastWeather
+        place.value = prefs.lastPlace
 
         if (!prefs.askedForLocation) {
             prefs.askedForLocation = true
@@ -169,6 +174,7 @@ class MainActivity : ComponentActivity() {
                 weather = weather.value,
                 nextAlarm = nextAlarm.value,
                 events = events.value,
+                place = place.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
@@ -197,6 +203,7 @@ class MainActivity : ComponentActivity() {
         }
         refreshNextAlarm()
         refreshEvents()
+        refreshPlace()
         // Restarted on every return, so a freshly granted notification access takes effect right away.
         if (settings.value.media) media.start()
         // After an update Android can be slow to reconnect our listener; ask it to.
@@ -231,9 +238,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun refreshPlace() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
+        lifecycleScope.launch {
+            val location = Weather.lastLocation(this@MainActivity) ?: return@launch
+            Place(location.latitude, location.longitude).let {
+                place.value = it
+                prefs.lastPlace = it
+            }
+        }
+    }
+
     private fun refreshEvents() {
         if (!settings.value.showEvents) return
-        lifecycleScope.launch { events.value = Calendar.upcoming(this@MainActivity, System.currentTimeMillis()) }
+        lifecycleScope.launch {
+            events.value = Calendar.upcoming(this@MainActivity, System.currentTimeMillis()) + Calendar.allDay(this@MainActivity, LocalDate.now())
+        }
     }
 
     override fun onDestroy() {
