@@ -2,7 +2,7 @@
 
 Each version's section becomes the notes of its GitHub release.
 
-## Unreleased
+## 1.1
 
 ### New
 - Wallpaper timetable: pick which scene shows from which time, plus optional snow all winter
