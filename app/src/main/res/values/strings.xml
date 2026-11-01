@@ -47,7 +47,7 @@
     <string name="page_home">Home screen</string>
     <string name="page_home_hint">wallpaper, 3×3 button, search bar, media</string>
     <string name="page_clock">Clock &amp; weather</string>
-    <string name="page_clock_hint">size, weather, alarm</string>
+    <string name="page_clock_hint">size, weather, alarm, events</string>
     <string name="page_stack">Stack</string>
     <string name="page_stack_hint">relevant, alphabet, hidden apps</string>
     <string name="page_icons">Icons</string>
@@ -118,12 +118,16 @@
     <string name="cd_close">Close</string>
     <string name="cd_back">Back</string>
     <string name="cd_alarm">Next alarm</string>
+    <string name="cd_event">Next event</string>
+    <string name="next_event">Next event</string>
+    <string name="next_event_hint">replaces the alarm when it starts within 4 hours</string>
     <string name="cd_new_notifications">new notifications</string>
     <string name="cd_voice_search">Voice search</string>
     <string name="cd_app_menu">Options</string>
     <string name="sky_clear">clear</string>
     <string name="sky_clear_night">clear night</string>
     <string name="sky_partly_cloudy">partly cloudy</string>
+    <string name="sky_partly_cloudy_night">partly cloudy night</string>
     <string name="sky_cloudy">cloudy</string>
     <string name="sky_fog">fog</string>
     <string name="sky_rain">rain</string>

@@ -89,6 +89,7 @@ fun Launcher(
     noDots: Set<String>,
     homePresses: Int,
     actions: LauncherActions,
+    events: List<CalendarEvent> = emptyList(),
 ) {
     // With the automatic scene on, the wallpaper follows the clock; checked once a minute.
     val clock = LocalClock.current
@@ -144,6 +145,7 @@ fun Launcher(
                     gridKeys = gridKeys,
                     weather = weather.takeIf { settings.showWeather },
                     nextAlarm = nextAlarm.takeIf { settings.showAlarm },
+                    events = if (settings.showEvents) events else emptyList(),
                     nowPlaying = nowPlaying.takeIf { settings.media },
                     dotPackages = dotPackages,
                     noDots = noDots,

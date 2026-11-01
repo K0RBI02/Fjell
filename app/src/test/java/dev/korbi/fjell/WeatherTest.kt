@@ -11,6 +11,12 @@ class WeatherTest {
     }
 
     @Test
+    fun `a few clouds at night show the moon, not the sun`() {
+        assertEquals(Sky.PartlyCloudy, Weather.skyFor(1, isDay = true))
+        assertEquals(Sky.PartlyCloudyNight, Weather.skyFor(2, isDay = false))
+    }
+
+    @Test
     fun `codes map to their glyph`() {
         assertEquals(Sky.PartlyCloudy, Weather.skyFor(2, isDay = true))
         assertEquals(Sky.Cloudy, Weather.skyFor(3, isDay = true))

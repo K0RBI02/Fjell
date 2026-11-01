@@ -43,12 +43,13 @@ class ScreenshotTest {
             iconVersion = 0,
             globalIconStyle = IconStyle.Original,
             iconPacks = emptyList(),
-            settings = LauncherSettings(media = true),
+            settings = LauncherSettings(media = true, showEvents = true),
             nowPlaying = NowPlaying("Burn It to the Ground", "Nickelback", playing = true, packageName = "app.spotify"),
             dotPackages = setOf("app.whatsapp"),
             noDots = emptySet(),
             homePresses = 0,
             actions = actions,
+            events = listOf(CalendarEvent(1, "Dentist", Fixtures.clock.millis() + 50 * 60 * 1000L)),
         )
     }
 

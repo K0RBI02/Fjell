@@ -67,6 +67,8 @@ class FakeActions : LauncherActions {
     override fun mediaOpen() = Unit
     override fun openClock() = Unit
     override fun openCalendar() = Unit
+    override fun openNextAlarm() = Unit
+    override fun openEvent(event: CalendarEvent) = Unit
     override fun expandNotifications() = Unit
     override suspend fun icon(app: AppEntry, sizePx: Int) = bubble(app, sizePx)
     override suspend fun previewIcon(app: AppEntry, style: IconStyle, sizePx: Int) = bubble(app, sizePx)

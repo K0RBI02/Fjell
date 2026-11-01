@@ -2,12 +2,14 @@ package dev.korbi.fjell
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.app.AlarmManager
 import android.app.SearchManager
 import android.content.BroadcastReceiver
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.ComponentName
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -17,6 +19,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.speech.RecognizerIntent
@@ -34,6 +37,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -56,6 +61,20 @@ class MainActivity : ComponentActivity() {
         override fun onReceive(context: Context, intent: Intent) = refreshNextAlarm()
     }
     private var weatherFetchedAt = 0L
+
+    /** Timed calendar events coming up soon; the UI picks the one to show. */
+    private val events = mutableStateOf<List<CalendarEvent>>(emptyList())
+
+    /** The display just came on: freshen what the clock line shows before the user looks. */
+    private val screenOn = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            refreshWeather()
+            refreshEvents()
+        }
+    }
+
+    /** Keeps the weather current while the home screen stays in front. */
+    private var weatherLoop: Job? = null
     private val globalIconStyle = mutableStateOf<IconStyle>(IconStyle.Pack(IconPack.NOTHING))
     private val iconPacks = mutableStateOf<List<IconSource>>(emptyList())
     private val settings = mutableStateOf(LauncherSettings())
@@ -97,6 +116,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val calendarPermission: ActivityResultLauncher<String> = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) refreshEvents() else actions.updateSettings { it.copy(showEvents = false) }
+    }
+
     private val locationPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) refreshWeather(force = true)
     }
@@ -130,6 +153,7 @@ class MainActivity : ComponentActivity() {
         reload()
         // System broadcast, so it still arrives with NOT_EXPORTED; recent Android insists on a flag.
         ContextCompat.registerReceiver(this, alarmChanged, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
+        ContextCompat.registerReceiver(this, screenOn, IntentFilter(Intent.ACTION_SCREEN_ON), ContextCompat.RECEIVER_NOT_EXPORTED)
         unwatch = repo.watch(
             onRemoved = { pkg, user -> setGrid(grid.value.map { key -> if (key != null && AppEntry.isOf(key, pkg, user.hashCode())) null else key }) },
             onChange = { reload() },
@@ -144,6 +168,7 @@ class MainActivity : ComponentActivity() {
                 hiddenKeys = hidden.value,
                 weather = weather.value,
                 nextAlarm = nextAlarm.value,
+                events = events.value,
                 iconVersion = iconVersion.intValue,
                 globalIconStyle = globalIconStyle.value,
                 iconPacks = iconPacks.value,
@@ -164,8 +189,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        refreshWeather()
+        weatherLoop = lifecycleScope.launch {
+            while (true) {
+                refreshWeather()
+                delay(WEATHER_MAX_AGE_MS)
+            }
+        }
         refreshNextAlarm()
+        refreshEvents()
         // Restarted on every return, so a freshly granted notification access takes effect right away.
         if (settings.value.media) media.start()
         // After an update Android can be slow to reconnect our listener; ask it to.
@@ -175,6 +206,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
+        weatherLoop?.cancel()
         media.stop()
         super.onPause()
     }
@@ -189,14 +221,24 @@ class MainActivity : ComponentActivity() {
         if (!settings.value.showWeather || !granted || !(force || stale)) return
         weatherFetchedAt = System.currentTimeMillis()
         lifecycleScope.launch {
-            val now = Weather.current(this@MainActivity) ?: return@launch
+            val now = Weather.current(this@MainActivity)
+            if (now == null) {
+                weatherFetchedAt = 0L // offline or no fix yet: try again next time instead of in half an hour
+                return@launch
+            }
             weather.value = now
             prefs.lastWeather = now
         }
     }
 
+    private fun refreshEvents() {
+        if (!settings.value.showEvents) return
+        lifecycleScope.launch { events.value = Calendar.upcoming(this@MainActivity, System.currentTimeMillis()) }
+    }
+
     override fun onDestroy() {
         unregisterReceiver(alarmChanged)
+        unregisterReceiver(screenOn)
         unwatch?.invoke()
         super.onDestroy()
     }
@@ -319,6 +361,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             if (after.showWeather && !before.showWeather) refreshWeather(force = true)
+            if (after.showEvents && !before.showEvents) {
+                if (Calendar.hasAccess(this@MainActivity)) refreshEvents() else calendarPermission.launch(Manifest.permission.READ_CALENDAR)
+            }
             if (after.searchContacts && !before.searchContacts && !Contacts.hasAccess(this@MainActivity)) {
                 contactsPermission.launch(Manifest.permission.READ_CONTACTS)
             }
@@ -413,6 +458,18 @@ class MainActivity : ComponentActivity() {
             startSafely(Intent(AlarmClock.ACTION_SHOW_ALARMS))
         }
 
+        override fun openNextAlarm() {
+            // The clock app hands over a link to the exact alarm; older ones don't, so fall back to the list.
+            val show = getSystemService(AlarmManager::class.java).nextAlarmClock?.showIntent
+            val opened = show != null && runCatching { show.send(this@MainActivity, 0, null, null, null, null, foregroundStart()) }.isSuccess
+            if (!opened) openClock()
+        }
+
+        override fun openEvent(event: CalendarEvent) {
+            val uri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, event.id)
+            if (!startSafely(Intent(Intent.ACTION_VIEW, uri))) openCalendar()
+        }
+
         override fun openCalendar() {
             startSafely(Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR))
         }
@@ -485,6 +542,14 @@ class MainActivity : ComponentActivity() {
     }
 
     /** False if nothing on the phone handles [intent]. */
+    /** Since Android 14 a pending intent only starts its activity with our foreground blessing if we say so. */
+    @Suppress("DEPRECATION")
+    private fun foregroundStart(): Bundle? = when {
+        Build.VERSION.SDK_INT >= 36 -> ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE).toBundle()
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle()
+        else -> null
+    }
+
     private fun startSafely(intent: Intent): Boolean = runCatching { startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
     companion object {
@@ -540,6 +605,10 @@ interface LauncherActions {
     fun mediaOpen()
     fun openClock()
     fun openCalendar()
+
+    /** The alarm that rings next, in its clock app; else the alarm list. */
+    fun openNextAlarm()
+    fun openEvent(event: CalendarEvent)
     fun expandNotifications()
     suspend fun icon(app: AppEntry, sizePx: Int): ImageBitmap
     suspend fun previewIcon(app: AppEntry, style: IconStyle, sizePx: Int): ImageBitmap
