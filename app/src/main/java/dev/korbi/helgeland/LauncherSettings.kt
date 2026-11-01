@@ -1,10 +1,11 @@
 package dev.korbi.helgeland
 
-import androidx.annotation.StringRes
 import android.content.SharedPreferences
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import java.time.LocalDateTime
 
 /**
  * The three Sør-Helgeland scenes to choose from. Positions are fractions of the image height:
@@ -26,7 +27,19 @@ enum class Scene(
 ) {
     Mountain(R.drawable.wp_mountain, R.string.scene_mountain, 0.6998f, 0.6567f, 0.6998f, Color.White, Color.White, lightSky = false),
     Pole(R.drawable.wp_pole, R.string.scene_pole, 0.648f, 0.6049f, 0.648f, DarkInk, Color.White, lightSky = true),
-    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true),
+    Snow(R.drawable.wp_snow, R.string.scene_snow, 0.69f, 0.6439f, 0.69f, DarkInk, DarkInk, lightSky = true);
+
+    companion object {
+        /** The automatic choice: snow all through winter, otherwise the mountain by day and the pole at night. */
+        fun automatic(time: LocalDateTime): Scene = when {
+            time.monthValue in WINTER_MONTHS -> Snow
+            time.hour in DAY_HOURS -> Mountain
+            else -> Pole
+        }
+
+        private val WINTER_MONTHS = setOf(12, 1, 2)
+        private val DAY_HOURS = 7 until 18
+    }
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
@@ -65,7 +78,12 @@ data class LauncherSettings(
     val media: Boolean = false,
     val notificationDots: Boolean = true,
     val searchContacts: Boolean = false,
+    /** Follow the time of day and season instead of [scene]. */
+    val autoScene: Boolean = false,
 ) {
+    /** The scene to draw at [time]: the automatic one if switched on, else the chosen one. */
+    fun sceneAt(time: LocalDateTime): Scene = if (autoScene) Scene.automatic(time) else scene
+
     fun save(sp: SharedPreferences) {
         sp.edit()
             .putString("scene", scene.name)
@@ -83,6 +101,7 @@ data class LauncherSettings(
             .putBoolean("media", media)
             .putBoolean("notificationDots", notificationDots)
             .putBoolean("searchContacts", searchContacts)
+            .putBoolean("autoScene", autoScene)
             .apply()
     }
 
@@ -105,6 +124,7 @@ data class LauncherSettings(
                 media = sp.getBoolean("media", d.media),
                 notificationDots = sp.getBoolean("notificationDots", d.notificationDots),
                 searchContacts = sp.getBoolean("searchContacts", d.searchContacts),
+                autoScene = sp.getBoolean("autoScene", d.autoScene),
             )
         }
 

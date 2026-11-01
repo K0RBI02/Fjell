@@ -131,4 +131,6 @@
     <string name="sky_thunder">thunderstorm</string>
     <string name="cd_open">Open</string>
     <string name="cd_call">Call %1$s</string>
+    <string name="auto_scene">Change with the time</string>
+    <string name="auto_scene_hint">mountain by day, pole at night, snow in winter</string>
 </resources>
