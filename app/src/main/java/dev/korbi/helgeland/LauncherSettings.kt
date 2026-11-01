@@ -32,16 +32,44 @@ enum class Scene(
     ;
 
     companion object {
-        /** The automatic choice: snow all through winter, otherwise the mountain by day and the pole at night. */
-        fun automatic(time: LocalDateTime): Scene = when {
-            time.monthValue in WINTER_MONTHS -> Snow
-            time.hour in DAY_HOURS -> Mountain
-            else -> Pole
-        }
-
         private val WINTER_MONTHS = setOf(12, 1, 2)
-        private val DAY_HOURS = 7 until 18
+
+        fun isWinter(time: LocalDateTime) = time.monthValue in WINTER_MONTHS
     }
+}
+
+/** From [minute] of the day (0 until 1440) on, [scene] shows, until the next slot takes over. */
+data class SceneSlot(val minute: Int, val scene: Scene)
+
+/** The user's wallpaper timetable; each slot runs until the next one, the last one past midnight. */
+object SceneSchedule {
+    const val MAX_SLOTS = 6
+    val DEFAULT = listOf(SceneSlot(7 * 60, Scene.Mountain), SceneSlot(18 * 60, Scene.Pole))
+
+    /** The slot in charge at [minute], or null for an empty schedule. */
+    fun slotAt(slots: List<SceneSlot>, minute: Int): SceneSlot? {
+        val sorted = slots.sortedBy { it.minute }
+        return sorted.lastOrNull { it.minute <= minute } ?: sorted.lastOrNull()
+    }
+
+    /** A free time for a new slot: an hour after the last one, stepping on until nothing is there yet. */
+    fun nextFreeMinute(slots: List<SceneSlot>): Int {
+        val taken = slots.map { it.minute }.toSet()
+        var minute = ((slots.maxOfOrNull { it.minute } ?: (11 * 60)) + 60) % MINUTES_PER_DAY
+        while (minute in taken) minute = (minute + 60) % MINUTES_PER_DAY
+        return minute
+    }
+
+    /** "420:Mountain,1080:Pole"; unknown scenes and broken entries are skipped. */
+    fun encode(slots: List<SceneSlot>) = slots.joinToString(",") { "${it.minute}:${it.scene.name}" }
+
+    fun decode(text: String?): List<SceneSlot>? = text?.split(',')?.mapNotNull { part ->
+        val (minute, name) = part.split(':').takeIf { it.size == 2 } ?: return@mapNotNull null
+        val scene = Scene.entries.firstOrNull { it.name == name } ?: return@mapNotNull null
+        minute.toIntOrNull()?.takeIf { it in 0 until MINUTES_PER_DAY }?.let { SceneSlot(it, scene) }
+    }
+
+    private const val MINUTES_PER_DAY = 24 * 60
 }
 
 private val DarkInk get() = Color(0xFF2E3550)
@@ -84,11 +112,17 @@ data class LauncherSettings(
     val media: Boolean = false,
     val notificationDots: Boolean = true,
     val searchContacts: Boolean = false,
-    /** Follow the time of day and season instead of [scene]. */
+    /** Follow [schedule] (and the season) instead of [scene]. */
     val autoScene: Boolean = false,
+    val schedule: List<SceneSlot> = SceneSchedule.DEFAULT,
+    val snowInWinter: Boolean = true,
 ) {
-    /** The scene to draw at [time]: the automatic one if switched on, else the chosen one. */
-    fun sceneAt(time: LocalDateTime): Scene = if (autoScene) Scene.automatic(time) else scene
+    /** The scene to draw at [time]: the scheduled one if switched on, else the chosen one. */
+    fun sceneAt(time: LocalDateTime): Scene = when {
+        !autoScene -> scene
+        snowInWinter && Scene.isWinter(time) -> Scene.Snow
+        else -> SceneSchedule.slotAt(schedule, time.hour * 60 + time.minute)?.scene ?: scene
+    }
 
     fun save(sp: SharedPreferences) {
         sp.edit()
@@ -109,6 +143,8 @@ data class LauncherSettings(
             .putBoolean("notificationDots", notificationDots)
             .putBoolean("searchContacts", searchContacts)
             .putBoolean("autoScene", autoScene)
+            .putString("schedule", SceneSchedule.encode(schedule))
+            .putBoolean("snowInWinter", snowInWinter)
             .apply()
     }
 
@@ -133,6 +169,8 @@ data class LauncherSettings(
                 notificationDots = sp.getBoolean("notificationDots", d.notificationDots),
                 searchContacts = sp.getBoolean("searchContacts", d.searchContacts),
                 autoScene = sp.getBoolean("autoScene", d.autoScene),
+                schedule = SceneSchedule.decode(sp.getString("schedule", null)) ?: d.schedule,
+                snowInWinter = sp.getBoolean("snowInWinter", d.snowInWinter),
             )
         }
 

@@ -136,5 +136,13 @@
     <string name="cd_open">Open</string>
     <string name="cd_call">Call %1$s</string>
     <string name="auto_scene">Change with the time</string>
-    <string name="auto_scene_hint">mountain by day, pole at night, snow in winter</string>
+    <string name="auto_scene_hint">follow your own timetable</string>
+    <string name="from_time">from %1$s</string>
+    <string name="add_time">+ Add a time</string>
+    <string name="set_time">Set</string>
+    <string name="cancel">Cancel</string>
+    <string name="remove">Remove</string>
+    <string name="cd_change_scene">%1$s, tap to change</string>
+    <string name="snow_in_winter">Snow in winter</string>
+    <string name="snow_in_winter_hint">December to February, all day</string>
 </resources>

@@ -1,5 +1,6 @@
 package dev.korbi.helgeland
 
+import android.text.format.DateFormat
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.foundation.Canvas
@@ -19,7 +20,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +48,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /** The settings popup's pages: an overview of categories, then one page per category. */
 private enum class SettingsPage(@StringRes val title: Int, @StringRes val hint: Int, val glyph: DrawScope.(Color) -> Unit) {
@@ -144,6 +153,17 @@ private fun LazyListScope.homePage(settings: LauncherSettings, stapelShown: Bool
             on = settings.autoScene,
             onToggle = { update { it.copy(autoScene = !it.autoScene) } },
         ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.PartlyCloudy, Ink) } } }
+    }
+    if (settings.autoScene) {
+        item { ScheduleEditor(settings.schedule, update) }
+        item {
+            ToggleRow(
+                label = stringResource(R.string.snow_in_winter),
+                hint = stringResource(R.string.snow_in_winter_hint),
+                on = settings.snowInWinter,
+                onToggle = { update { it.copy(snowInWinter = !it.snowInWinter) } },
+            ) { GlyphBubble { Canvas(Modifier.size(20.dp)) { drawSkyGlyph(Sky.Snow, Ink) } } }
+        }
     }
     item { HandTitle(stringResource(R.string.on_home_screen), Modifier.padding(start = 22.dp, end = 22.dp, top = 8.dp)) }
     item {
@@ -382,3 +402,125 @@ private fun DrawScope.drawWaveGlyph(color: Color) {
         drawLine(color, Offset(w * x, h * (0.5f - half)), Offset(w * x, h * (0.5f + half)), stroke, StrokeCap.Round)
     }
 }
+
+/**
+ * The wallpaper timetable: one row per "from this time on" slot. Tapping the picture
+ * cycles the scene, tapping the time opens a dial, × removes the slot.
+ */
+@Composable
+internal fun ScheduleEditor(schedule: List<SceneSlot>, update: ((LauncherSettings) -> LauncherSettings) -> Unit, initiallyEditing: SceneSlot? = null) {
+    val is24 = DateFormat.is24HourFormat(LocalContext.current)
+    val slots = schedule.sortedBy { it.minute }
+    var editing by remember { mutableStateOf(initiallyEditing) }
+    fun replace(old: SceneSlot, new: SceneSlot?) = update { s -> s.copy(schedule = s.schedule.mapNotNull { if (it == old) new else it }) }
+
+    Column(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 4.dp)) {
+        slots.forEach { slot ->
+            val sceneName = stringResource(slot.scene.label)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Image(
+                    painter = painterResource(slot.scene.res),
+                    contentDescription = stringResource(R.string.cd_change_scene, sceneName),
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(36))
+                        .clickable(role = Role.Button) {
+                            val next = Scene.entries[(slot.scene.ordinal + 1) % Scene.entries.size]
+                            replace(slot, slot.copy(scene = next))
+                            if (editing == slot) editing = slot.copy(scene = next)
+                        },
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { editing = if (editing == slot) null else slot },
+                ) {
+                    Text(stringResource(R.string.from_time, formatMinute(slot.minute, is24)), style = rowStyle)
+                    Text(sceneName, style = hintStyle)
+                }
+                if (slots.size > 1) {
+                    Text(
+                        "×",
+                        style = rowStyle.copy(fontSize = 26.sp, color = Muted),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.remove)) {
+                                replace(slot, null)
+                                if (editing == slot) editing = null
+                            }
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
+                    )
+                }
+            }
+            if (editing == slot) {
+                TimeEditor(
+                    minute = slot.minute,
+                    is24 = is24,
+                    onDone = { minute ->
+                        // Two slots at the same time would fight; the dial just stays open on a clash.
+                        if (minute == slot.minute) {
+                            editing = null
+                        } else if (slots.none { it.minute == minute }) {
+                            replace(slot, slot.copy(minute = minute))
+                            editing = null
+                        }
+                    },
+                    onCancel = { editing = null },
+                )
+            }
+        }
+        if (slots.size < SceneSchedule.MAX_SLOTS) {
+            Text(
+                stringResource(R.string.add_time),
+                style = rowStyle.copy(color = Muted),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable {
+                        val slot = SceneSlot(SceneSchedule.nextFreeMinute(slots), Scene.Mountain)
+                        update { s -> s.copy(schedule = s.schedule + slot) }
+                        editing = slot
+                    }
+                    .padding(vertical = 8.dp, horizontal = 4.dp),
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimeEditor(minute: Int, is24: Boolean, onDone: (Int) -> Unit, onCancel: () -> Unit) {
+    val state = rememberTimePickerState(initialHour = minute / 60, initialMinute = minute % 60, is24Hour = is24)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        // The dial draws its colon in onSurface, which is dark ink in our light menu scheme.
+        MaterialTheme(colorScheme = MaterialTheme.colorScheme.copy(onSurface = PopupText)) {
+            TimePicker(
+                state = state,
+                colors = TimePickerDefaults.colors(
+                    clockDialColor = Card,
+                    clockDialSelectedContentColor = Color.White,
+                    clockDialUnselectedContentColor = PopupText,
+                    selectorColor = Mountain,
+                    periodSelectorBorderColor = Muted,
+                    periodSelectorSelectedContainerColor = Mountain,
+                    periodSelectorUnselectedContainerColor = Color.Transparent,
+                    periodSelectorSelectedContentColor = Color.White,
+                    periodSelectorUnselectedContentColor = Muted,
+                    timeSelectorSelectedContainerColor = Mountain,
+                    timeSelectorUnselectedContainerColor = Card,
+                    timeSelectorSelectedContentColor = Color.White,
+                    timeSelectorUnselectedContentColor = PopupText,
+                ),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.cancel), style = rowStyle.copy(color = Muted), modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onCancel).padding(12.dp))
+            Text(stringResource(R.string.set_time), style = rowStyle, modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onDone(state.hour * 60 + state.minute) }.padding(12.dp))
+        }
+    }
+}
+
+private fun formatMinute(minute: Int, is24: Boolean): String = LocalTime.of(minute / 60, minute % 60).format(DateTimeFormatter.ofPattern(if (is24) "HH:mm" else "h:mm a", Locale.ENGLISH))

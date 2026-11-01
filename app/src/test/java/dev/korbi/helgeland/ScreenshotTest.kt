@@ -1,7 +1,13 @@
 package dev.korbi.helgeland
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.RoborazziOptions
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Test
@@ -81,5 +87,13 @@ class ScreenshotTest {
             actions = actions,
             onDismiss = {},
         )
+    }
+
+    @Test
+    fun schedule() = capture {
+        val slots = listOf(SceneSlot(7 * 60, Scene.Mountain), SceneSlot(18 * 60, Scene.Pole), SceneSlot(22 * 60 + 30, Scene.Snow))
+        Box(Modifier.fillMaxSize().background(Night).padding(top = 24.dp)) {
+            ScheduleEditor(slots, update = {}, initiallyEditing = slots[1])
+        }
     }
 }
