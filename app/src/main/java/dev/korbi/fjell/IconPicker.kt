@@ -370,7 +370,7 @@ internal fun BubbleSwitch(on: Boolean) {
     ) {
         Box(
             Modifier
-                .offset(x = 20.dp * progress)
+                .offset { IntOffset((20.dp * progress).roundToPx(), 0) }
                 .size(20.dp)
                 .shadow(2.dp, CircleShape)
                 .background(Color.White, CircleShape),

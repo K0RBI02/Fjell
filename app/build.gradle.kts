@@ -1,9 +1,27 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jlleitschuh.gradle.ktlint")
-    id("io.github.takahirom.roborazzi")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.roborazzi)
 }
+
+/** A setting from the environment (CI secrets) or from ~/.gradle/gradle.properties (local builds). */
+fun setting(name: String): String? = providers.environmentVariable(name).orElse(providers.gradleProperty(name)).orNull
+
+fun git(vararg args: String): String? = runCatching {
+    providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
+}.getOrNull()?.takeIf { it.isNotEmpty() }
+
+// The version comes from git, so a tag and the app can't disagree: on tag v1.1 it's "1.1",
+// five commits later "1.1+5". The code counts commits, so every build installs over the last.
+val appVersionCode = git("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+val appVersionName = git("describe", "--tags", "--match", "v*")
+    ?.removePrefix("v")
+    ?.replace(Regex("-(\\d+)-g[0-9a-f]+$"), "+$1")
+    ?: "dev"
+
+/** Present when the release key is available: in CI from secrets, locally from ~/.gradle/gradle.properties. */
+val releaseKeystore = setting("FJELL_KEYSTORE")?.let(::file)?.takeIf { it.exists() }
 
 android {
     namespace = "dev.korbi.fjell"
@@ -15,8 +33,19 @@ android {
         applicationId = "dev.korbi.fjell"
         minSdk = 29
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
+    }
+
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = setting("FJELL_KEYSTORE_PASSWORD")
+                keyAlias = setting("FJELL_KEY_ALIAS")
+                keyPassword = setting("FJELL_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -24,8 +53,10 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            // Signed with the debug key so it installs straight over USB.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without the key (pull requests, Dependabot) it falls back to the debug key, so CI can still build.
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // Developer builds only: -Pfjell.debuggable lets `adb run-as` reach the app's data.
+            isDebuggable = providers.gradleProperty("fjell.debuggable").isPresent
         }
     }
     compileOptions {
@@ -34,6 +65,12 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    lint {
+        // Style nudges and "newer version available" (Dependabot's job) would only drown real findings.
+        disable += setOf("UseKtx", "GradleDependency")
+        warningsAsErrors = false
+        abortOnError = true
     }
     testOptions {
         // Robolectric renders our real fonts, strings and drawables for the screenshot tests.
@@ -46,21 +83,21 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.activity:activity-compose:1.11.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("androidx.core:core-ktx:1.17.0")
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.core.ktx)
 
-    testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.17")
-    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
-    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.77.0")
-    testImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 roborazzi {
