@@ -64,7 +64,8 @@ internal fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherAc
     val text = listOfNotNull(nowPlaying.title, nowPlaying.artist).joinToString(" – ")
     Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier) {
         Wave(nowPlaying.playing, color, Modifier.clickable(noRipple, null, onClick = actions::mediaOpen))
-        Spacer(Modifier.width(10.dp - FADE))
+        // A clear gap first, so the title fades out well before it reaches the bars.
+        Spacer(Modifier.width(12.dp))
         // A new track slides in from the right while the old one leaves to the left, like flipping on.
         AnimatedContent(
             targetState = text,
@@ -107,7 +108,7 @@ internal fun MediaLine(nowPlaying: NowPlaying, color: Color, actions: LauncherAc
     }
 }
 
-private val FADE = 12.dp
+private val FADE = 10.dp
 
 /** Lets the scrolling title fade in and out instead of being cut off at its edges. */
 private fun Modifier.fadeEdges() = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
