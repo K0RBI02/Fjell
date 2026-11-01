@@ -5,16 +5,16 @@ import android.content.Context
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 import kotlin.coroutines.resume
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
 
 /** What the clock line shows of the weather. */
 enum class Sky { Clear, ClearNight, PartlyCloudy, Cloudy, Fog, Rain, Snow, Thunder }

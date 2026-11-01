@@ -141,8 +141,11 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
         scope.launch { offset.snapTo((offset.value + delta).coerceAtLeast(0f)) }
     }
     fun settle(velocity: Float) {
-        if (offset.value > closeDistance || velocity > FLING_TO_CLOSE) dismiss()
-        else scope.launch { offset.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+        if (offset.value > closeDistance || velocity > FLING_TO_CLOSE) {
+            dismiss()
+        } else {
+            scope.launch { offset.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow)) }
+        }
     }
     // Lets the list hand over: pulling down at its top moves the sheet, pushing up first
     // brings the sheet back before the list scrolls again.
@@ -202,23 +205,23 @@ fun FjellPopup(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                     .navigationBarsPadding()
                     .imePadding(),
             ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(26.dp)
-                    .draggable(
-                        state = rememberDraggableState { dragBy(it) },
-                        orientation = Orientation.Vertical,
-                        onDragStopped = { settle(it) },
-                    )
-                    // Tapping closes too, so the handle works without dragging (and for TalkBack).
-                    .clickable(noRipple, null, role = Role.Button, onClickLabel = closeLabel, onClick = onDismiss)
-                    .semantics { contentDescription = closeLabel },
-            ) {
-                Box(Modifier.size(width = 40.dp, height = 4.dp).background(PopupText.copy(alpha = 0.45f), RoundedCornerShape(50)))
-            }
-            Box(Modifier.weight(1f, fill = false)) { content() }
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(26.dp)
+                        .draggable(
+                            state = rememberDraggableState { dragBy(it) },
+                            orientation = Orientation.Vertical,
+                            onDragStopped = { settle(it) },
+                        )
+                        // Tapping closes too, so the handle works without dragging (and for TalkBack).
+                        .clickable(noRipple, null, role = Role.Button, onClickLabel = closeLabel, onClick = onDismiss)
+                        .semantics { contentDescription = closeLabel },
+                ) {
+                    Box(Modifier.size(width = 40.dp, height = 4.dp).background(PopupText.copy(alpha = 0.45f), RoundedCornerShape(50)))
+                }
+                Box(Modifier.weight(1f, fill = false)) { content() }
             }
         }
     }
@@ -416,7 +419,10 @@ fun IconPickerPopup(
                         hint = stringResource(R.string.icon_default_hint),
                         selected = current == null,
                         preview = { StylePreview(app, globalStyle, actions) },
-                        onClick = { actions.setAppIconStyle(app, null); onClose() },
+                        onClick = {
+                            actions.setAppIconStyle(app, null)
+                            onClose()
+                        },
                     )
                 }
                 styleRows(
@@ -424,7 +430,10 @@ fun IconPickerPopup(
                     selected = current,
                     iconPacks = iconPacks,
                     actions = actions,
-                    onSelect = { actions.setAppIconStyle(app, it); onClose() },
+                    onSelect = {
+                        actions.setAppIconStyle(app, it)
+                        onClose()
+                    },
                     onOpenPack = { browsing = it },
                 )
                 item {
@@ -433,7 +442,10 @@ fun IconPickerPopup(
                         hint = stringResource(R.string.icon_own_picture_hint),
                         selected = current == IconStyle.Custom,
                         preview = if (current == IconStyle.Custom) ({ StylePreview(app, IconStyle.Custom, actions) }) else null,
-                        onClick = { actions.pickCustomIcon(app); onClose() },
+                        onClick = {
+                            actions.pickCustomIcon(app)
+                            onClose()
+                        },
                     )
                 }
             }

@@ -62,8 +62,7 @@ class IconPack(context: Context, val packageName: String) {
     }
 
     /** The pack's icon for [app], if it has one. */
-    fun matched(app: AppEntry): String? =
-        byComponent[app.component.flattenToString()] ?: byPackage[app.component.packageName]
+    fun matched(app: AppEntry): String? = byComponent[app.component.flattenToString()] ?: byPackage[app.component.packageName]
 
     fun icon(name: String, size: Int): Bitmap? = drawable(name)?.let { IconRender.render(it, size) }
 
@@ -103,8 +102,7 @@ class IconPack(context: Context, val packageName: String) {
     companion object {
         const val NOTHING = "com.nothing.icon.free"
 
-        fun loadOrNull(context: Context, pkg: String): IconPack? =
-            runCatching { IconPack(context, pkg) }.getOrNull()
+        fun loadOrNull(context: Context, pkg: String): IconPack? = runCatching { IconPack(context, pkg) }.getOrNull()
 
         /** Package names of installed apps that announce themselves as icon packs. */
         fun installedPacks(context: Context): List<String> {

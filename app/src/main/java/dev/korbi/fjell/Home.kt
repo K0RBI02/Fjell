@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -119,7 +118,10 @@ internal fun Home(
                 var total = Offset.Zero
                 detectDragGestures(
                     onDragStart = { total = Offset.Zero },
-                    onDrag = { change, amount -> change.consume(); total += amount },
+                    onDrag = { change, amount ->
+                        change.consume()
+                        total += amount
+                    },
                     onDragEnd = {
                         val (dx, dy) = total
                         when {
@@ -319,7 +321,10 @@ internal fun DrawScope.drawSkyGlyph(sky: Sky, color: Color) {
         Sky.Thunder -> {
             cloud(h * 0.22f)
             val bolt = Path().apply {
-                moveTo(w * 0.56f, h * 0.6f); lineTo(w * 0.42f, h * 0.8f); lineTo(w * 0.56f, h * 0.8f); lineTo(w * 0.46f, h * 0.98f)
+                moveTo(w * 0.56f, h * 0.6f)
+                lineTo(w * 0.42f, h * 0.8f)
+                lineTo(w * 0.56f, h * 0.8f)
+                lineTo(w * 0.46f, h * 0.98f)
             }
             drawPath(bolt, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round))
         }

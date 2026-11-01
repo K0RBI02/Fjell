@@ -17,10 +17,9 @@ object Calculator {
     }
 
     /** "48", "0.3333333333", "1.5E+20": at most 10 significant digits, no trailing zeros. */
-    fun format(value: Double): String =
-        BigDecimal(value).round(MathContext(10)).stripTrailingZeros().let {
-            if (it.abs() < BigDecimal("1E15")) it.toPlainString() else it.toString()
-        }
+    fun format(value: Double): String = BigDecimal(value).round(MathContext(10)).stripTrailingZeros().let {
+        if (it.abs() < BigDecimal("1E15")) it.toPlainString() else it.toString()
+    }
 
     private const val OPERATORS = "+-−*×/÷^%"
 
@@ -34,8 +33,14 @@ object Calculator {
             var value = product()
             while (true) {
                 value = when (peek()) {
-                    '+' -> { pos++; value + product() }
-                    '-', '−' -> { pos++; value - product() }
+                    '+' -> {
+                        pos++
+                        value + product()
+                    }
+                    '-', '−' -> {
+                        pos++
+                        value - product()
+                    }
                     else -> return value
                 }
             }
@@ -45,8 +50,14 @@ object Calculator {
             var value = power()
             while (true) {
                 value = when (peek()) {
-                    '*', '×' -> { pos++; value * power() }
-                    '/', '÷' -> { pos++; value / power() }
+                    '*', '×' -> {
+                        pos++
+                        value * power()
+                    }
+                    '/', '÷' -> {
+                        pos++
+                        value / power()
+                    }
                     else -> return value
                 }
             }
@@ -62,8 +73,14 @@ object Calculator {
         }
 
         private fun unary(): Double = when (peek()) {
-            '-', '−' -> { pos++; -unary() }
-            '+' -> { pos++; unary() }
+            '-', '−' -> {
+                pos++
+                -unary()
+            }
+            '+' -> {
+                pos++
+                unary()
+            }
             else -> percent(atom())
         }
 

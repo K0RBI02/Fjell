@@ -27,8 +27,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build and test
-        run: ./gradlew assembleRelease testDebugUnitTest
+      - name: Check style, build and test
+        run: ./gradlew ktlintCheck assembleRelease testDebugUnitTest
 
       - uses: actions/upload-artifact@v4
         with:

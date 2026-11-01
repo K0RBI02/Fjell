@@ -90,7 +90,15 @@ private fun MediaButton(color: Color, label: String, onClick: () -> Unit, glyph:
 private fun DrawScope.drawPlayGlyph(color: Color) {
     val w = size.width
     val h = size.height
-    drawPath(Path().apply { moveTo(w * 0.22f, h * 0.1f); lineTo(w * 0.9f, h * 0.5f); lineTo(w * 0.22f, h * 0.9f); close() }, color)
+    drawPath(
+        Path().apply {
+            moveTo(w * 0.22f, h * 0.1f)
+            lineTo(w * 0.9f, h * 0.5f)
+            lineTo(w * 0.22f, h * 0.9f)
+            close()
+        },
+        color,
+    )
 }
 
 private fun DrawScope.drawPauseGlyph(color: Color) {
@@ -103,6 +111,14 @@ private fun DrawScope.drawPauseGlyph(color: Color) {
 private fun DrawScope.drawNextGlyph(color: Color) {
     val w = size.width
     val h = size.height
-    drawPath(Path().apply { moveTo(w * 0.08f, h * 0.12f); lineTo(w * 0.66f, h * 0.5f); lineTo(w * 0.08f, h * 0.88f); close() }, color)
+    drawPath(
+        Path().apply {
+            moveTo(w * 0.08f, h * 0.12f)
+            lineTo(w * 0.66f, h * 0.5f)
+            lineTo(w * 0.08f, h * 0.88f)
+            close()
+        },
+        color,
+    )
     drawRoundRect(color, Offset(w * 0.72f, h * 0.12f), Size(w * 0.16f, h * 0.76f), CornerRadius(w * 0.05f))
 }
