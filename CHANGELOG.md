@@ -2,9 +2,15 @@
 
 Each version's section becomes the notes of its GitHub release.
 
-## Unreleased
+## 1.2
+
+The first release as **Fjell**, now open source under the GPL-3.0.
 
 ### New
+- Your own wallpapers: pick a picture, drag a line to where the calm area for your apps begins, done.
+  Clock and media colors adapt to the picture
+- Three built-in scenes drawn in code: Fjord, Dusk and Winter
+- The wallpaper fades over when the scene changes
 - Timetable slots can follow sunrise and sunset (computed on the phone from the coarse location)
 - All-day events (birthdays, holidays) show on the clock line until 6 pm
 
@@ -13,6 +19,7 @@ Each version's section becomes the notes of its GitHub release.
 - Apps an icon pack doesn't cover keep their original icon
 - New notifications show as a hairline arc around the icon's top-right corner, in the icon's own color
 - Long icon pack names wrap instead of being cut off
+- The winter scene can be any wallpaper, including your own
 
 ## 1.1
 
