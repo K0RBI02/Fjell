@@ -36,7 +36,7 @@ Each version's section becomes the notes of its GitHub release.
 
 ## 1.0
 
-The first release: a calm home screen with flat landscape scenes.
+The first release: a calm home screen with a hand-lettered clock and flat landscape scenes.
 
 - Hand-lettered clock with date, weather and next alarm
 - 4×3 app grid in the calm band of the wallpaper, with drag and drop and an optional search bar

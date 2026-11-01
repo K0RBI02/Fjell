@@ -9,12 +9,16 @@ plugins {
 fun setting(name: String): String? = providers.environmentVariable(name).orElse(providers.gradleProperty(name)).orNull
 
 fun git(vararg args: String): String? = runCatching {
-    providers.exec { commandLine("git", *args) }.standardOutput.asText.get().trim()
+    providers.exec {
+        commandLine("git", *args)
+        isIgnoreExitValue = true // no tag yet → empty → "dev"
+    }.standardOutput.asText.get().trim()
 }.getOrNull()?.takeIf { it.isNotEmpty() }
 
 // The version comes from git, so a tag and the app can't disagree: on tag v1.1 it's "1.1",
 // five commits later "1.1+5". The code counts commits, so every build installs over the last.
-val appVersionCode = git("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1
+// +100: the history was restarted at 1.1, so codes must stay above the versions already installed.
+val appVersionCode = (git("rev-list", "--count", "HEAD")?.toIntOrNull() ?: 1) + 100
 val appVersionName = git("describe", "--tags", "--match", "v*")
     ?.removePrefix("v")
     ?.replace(Regex("-(\\d+)-g[0-9a-f]+$"), "+$1")

@@ -159,7 +159,6 @@ class MainActivity : ComponentActivity() {
         globalIconStyle.value = icons.globalStyle
         settings.value = prefs.settings
         customScenes.value = prefs.customScenes
-        if (!prefs.legacyScenesMigrated) migrateLegacyScenes()
         grid.value = prefs.grid
         recent.value = prefs.recent
         launchCounts.value = prefs.launchCounts
@@ -258,24 +257,6 @@ class MainActivity : ComponentActivity() {
             }
             weather.value = now
             prefs.lastWeather = now
-        }
-    }
-
-    /** Moves the pictures the app used to ship with into the user's own wallpapers, once. */
-    private fun migrateLegacyScenes() {
-        lifecycleScope.launch {
-            val moved = withContext(Dispatchers.IO) { runCatching { LegacyScenes.migrate(this@MainActivity) }.getOrNull() } ?: return@launch
-            customScenes.value = customScenes.value + moved.values
-            prefs.customScenes = customScenes.value
-            val ids = moved.mapValues { it.value.id }
-            actions.updateSettings { s ->
-                s.copy(
-                    scene = ids[s.scene] ?: s.scene,
-                    schedule = s.schedule.map { it.copy(scene = ids[it.scene] ?: it.scene) },
-                    winterScene = if (s.winterScene == Scene.WINTER_ID) ids.getValue("Snow") else s.winterScene,
-                )
-            }
-            prefs.legacyScenesMigrated = true
         }
     }
 

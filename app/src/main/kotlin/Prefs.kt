@@ -101,10 +101,6 @@ class Prefs(context: Context) {
             }
         }.apply()
 
-    var legacyScenesMigrated: Boolean
-        get() = sp.getBoolean("legacyScenesMigrated", false)
-        set(value) = sp.edit().putBoolean("legacyScenesMigrated", value).apply()
-
     var askedForLocation: Boolean
         get() = sp.getBoolean("askedForLocation", false)
         set(value) = sp.edit().putBoolean("askedForLocation", value).apply()
