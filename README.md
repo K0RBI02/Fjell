@@ -12,6 +12,10 @@ swipe away.
 
 **[Download the latest APK](https://github.com/K0RBI02/Fjell/releases/latest)** · Android 10 or newer
 
+For automatic updates, add Fjell to [Obtainium](https://github.com/ImranR98/Obtainium):
+**[Add to Obtainium](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/K0RBI02/Fjell)**
+(or paste `https://github.com/K0RBI02/Fjell` into *Add App*).
+
 ## Features
 
 - **Home:** hand-lettered clock with date, weather, the next alarm or calendar event, and a
