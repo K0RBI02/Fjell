@@ -2,6 +2,12 @@
 
 Each version's section becomes the notes of its GitHub release.
 
+## Unreleased
+
+### Improved
+- New app icon, with a single-color version for themed icons
+- Sun and moon in the built-in scenes no longer sit behind the clock
+
 ## 1.2
 
 The first release as **Fjell**, now open source under the GPL-3.0.

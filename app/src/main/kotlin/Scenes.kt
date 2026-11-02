@@ -109,7 +109,10 @@ fun Scene.label(): String = art?.let { stringResource(it.label) } ?: name
 
 private val DarkInk = Color(0xFF2E3550)
 
-/** Flat, layered landscapes drawn in code, so the app ships with no pictures of its own. */
+/**
+ * Flat, layered landscapes drawn in code, so the app ships with no pictures of its own.
+ * Sun and moon stay right of and below the clock area (top ~28%), so they never sit behind the time.
+ */
 enum class SceneArt(@StringRes val label: Int, private val id: String) {
     Fjord(R.string.scene_fjord, Scene.DEFAULT_ID),
     Dusk(R.string.scene_dusk, "dusk"),
@@ -161,7 +164,7 @@ class ScenePainter(private val art: SceneArt) : Painter() {
         when (art) {
             SceneArt.Fjord -> {
                 band(0xFFA7B6C8, 0f, 0.62f)
-                drawCircle(Color(0xFFF1E4CC), 0.075f * w, Offset(0.72f * w, 0.30f * h))
+                drawCircle(Color(0xFFF1E4CC), 0.075f * w, Offset(0.75f * w, 0.36f * h))
                 ridge(0xFF8496B0, 0.18f to 0.41f, 0.34f to 0.47f, 0.55f to 0.335f, 0.78f to 0.45f, 1f to 0.385f, bottom = 0.62f)
                 ridge(0xFF2A3347, 0.22f to 0.475f, 0.40f to 0.55f, 0.63f to 0.495f, 0.82f to 0.545f, 1f to 0.52f, bottom = 0.62f)
                 band(0xFF5A7092, 0.60f, 0.652f)
@@ -174,7 +177,7 @@ class ScenePainter(private val art: SceneArt) : Painter() {
                 band(0xFF5E5274, 0.22f, 0.33f)
                 band(0xFFB9847F, 0.33f, 0.41f)
                 band(0xFFE5BE9D, 0.41f, 0.66f)
-                drawCircle(Color(0xFFF3E6D0), 0.035f * w, Offset(0.26f * w, 0.17f * h))
+                drawCircle(Color(0xFFF3E6D0), 0.035f * w, Offset(0.80f * w, 0.30f * h))
                 ridge(0xFF1C2233, 0.15f to 0.445f, 0.30f to 0.50f, 0.50f to 0.385f, 0.70f to 0.49f, 0.86f to 0.43f, 1f to 0.48f, bottom = 0.66f)
                 listOf(0.08f to 0.040f, 0.16f to 0.055f, 0.83f to 0.05f, 0.92f to 0.065f).forEach { (x, size) -> pine(0xFF121722, x, 0.648f, size) }
                 band(0xFF3A3450, 0.647f, 0.69f)
@@ -182,7 +185,7 @@ class ScenePainter(private val art: SceneArt) : Painter() {
             }
             SceneArt.Winter -> {
                 band(0xFFD7E0E9, 0f, 0.66f)
-                drawCircle(Color(0xFFF5F2EA), 0.06f * w, Offset(0.30f * w, 0.26f * h))
+                drawCircle(Color(0xFFF5F2EA), 0.06f * w, Offset(0.72f * w, 0.345f * h))
                 ridge(0xFFB9C7D5, 0.25f to 0.47f, 0.48f to 0.40f, 0.72f to 0.46f, 1f to 0.43f, bottom = 0.66f)
                 ridge(0xFFEDF1F5, 0.30f to 0.56f, 0.62f to 0.52f, 1f to 0.575f, bottom = 0.66f)
                 listOf(0.14f to 0.07f, 0.22f to 0.05f, 0.70f to 0.06f, 0.79f to 0.085f, 0.88f to 0.055f).forEach { (x, size) -> pine(0xFF2E3A4A, x, 0.645f, size) }
