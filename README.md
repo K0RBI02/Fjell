@@ -7,7 +7,6 @@ swipe away.
 <p align="center">
   <img src="docs/home-fjord.png" width="220" alt="Home screen with the Fjord scene">
   <img src="docs/home-dusk.png" width="220" alt="Home screen with the Dusk scene">
-  <img src="docs/stack.png" width="220" alt="The app stack">
   <img src="docs/settings.png" width="220" alt="Settings">
 </p>
 
