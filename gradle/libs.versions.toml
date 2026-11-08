@@ -1,5 +1,5 @@
 [versions]
-agp = "9.5.0"
+agp = "9.5.1"
 kotlin = "2.4.21"
 ktlint-gradle = "14.2.0"
 roborazzi = "1.77.0"
@@ -9,7 +9,7 @@ lifecycle = "2.9.4"
 core-ktx = "1.19.1"
 junit = "4.13.2"
 robolectric = "4.17"
-json = "20250517"
+json = "20260814"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
